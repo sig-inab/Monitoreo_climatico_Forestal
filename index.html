@@ -4,43 +4,103 @@
     <meta charset="UTF-8">
     <title>Monitoreo Climático - INAB</title>
     
-    <!-- 0. Cargar Leaflet (¡Esta era la línea que faltaba!) -->
     <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
-
-    <!-- 1. Cargar la API de Windy -->
     <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-    
-    <!-- 2. Cargar Esri Leaflet -->
     <script src="https://unpkg.com/esri-leaflet"></script>
-
-    <!-- 3. Cargar el Render (Simbología de ArcGIS) -->
     <script src="https://unpkg.com/esri-leaflet-renderers"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
         #windy { width: 100vw; height: 100vh; }
+
+        /* Barra de variables climáticas */
+        #toolbar {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(30, 30, 30, 0.88);
+            border-radius: 30px;
+            padding: 8px 14px;
+            display: flex;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        #toolbar button {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        #toolbar button:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        #toolbar button.active {
+            background: #e84040;
+            border-color: #e84040;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    
+
+    <!-- Barra de variables climáticas personalizada -->
+    <div id="toolbar">
+        <button onclick="setOverlay('rain')"       id="btn-rain">🌧️ Precipitación</button>
+        <button onclick="setOverlay('temp')"       id="btn-temp">🌡️ Temperatura</button>
+        <button onclick="setOverlay('wind')"       id="btn-wind">💨 Viento</button>
+        <button onclick="setOverlay('clouds')"     id="btn-clouds">☁️ Nubes</button>
+        <button onclick="setOverlay('pressure')"   id="btn-pressure">📊 Presión</button>
+        <button onclick="setOverlay('thunder')"    id="btn-thunder">⚡ Tormentas</button>
+        <button onclick="setOverlay('snowcover')"  id="btn-snow">❄️ Nieve</button>
+        <button onclick="setOverlay('rh')"         id="btn-rh">💧 Humedad</button>
+        <button onclick="setOverlay('dewpoint')"   id="btn-dew">🌫️ Punto de Rocío</button>
+    </div>
+
     <!-- Contenedor del Mapa -->
     <div id="windy"></div>
 
     <script>
-        // Opciones de Windy
+        let windyStore = null;
+
+        // Función para cambiar la variable climática activa
+        function setOverlay(overlay) {
+            if (windyStore) {
+                windyStore.set('overlay', overlay);
+                // Resaltar el botón activo
+                document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-' + overlay)?.classList.add('active');
+            }
+        }
+
+        // Opciones de Windy (abre con Precipitación por defecto)
         const options = {
             key: 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC', 
             lat: 15.5, 
             lon: -90.25,
             zoom: 7,
-            verbose: true
+            verbose: true,
+            overlay: 'rain'  // Abre mostrando Precipitación
         };
 
         // Inicializar el mapa
         windyInit(options, windyAPI => {
             const map = windyAPI.map;
-            
-            // Más adelante agregaremos las capas de ArcGIS aquí
+            windyStore = windyAPI.store;
+
+            // Marcar "Precipitación" como activo al inicio
+            document.getElementById('btn-rain').classList.add('active');
+
+            // Aquí agregaremos las capas de ArcGIS más adelante
             
         });
     </script>
