@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo Climático - INAB</title>
+
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+    <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+        #windy { width: 100vw; height: 100vh; }
+
+        #forecast-panel {
+            display: none;
+            position: absolute;
+            bottom: 70px;
+            left: 15px;
+            z-index: 1000;
+            background: rgba(15, 20, 30, 0.93);
+            color: #fff;
+            border-radius: 12px;
+            padding: 15px 18px;
+            width: 330px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            font-size: 13px;
+        }
+        #forecast-panel h3 { margin: 0 0 6px 0; font-size: 14px; color: #e84040; }
+        #forecast-panel .close-btn {
+            position: absolute; top: 10px; right: 12px;
+            cursor: pointer; font-size: 16px; color: #aaa;
+        }
+        #forecast-panel .close-btn:hover { color: #fff; }
+        #forecast-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+        #forecast-table th { background: rgba(255,255,255,0.1); padding: 5px; text-align: center; }
+        #forecast-table td { padding: 4px 6px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .note { font-size: 10px; color: #888; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <div id="forecast-panel">
+        <span class="close-btn" onclick="closeForecast()">✕</span>
+        <h3>📍 Pronóstico Puntual</h3>
+        <div id="forecast-coords" style="font-size:11px; color:#aaa; margin-bottom:6px;"></div>
+        <table id="forecast-table">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>🌡️ Temp (°C)</th>
+                    <th>🌧️ Precip (mm)</th>
+                </tr>
+            </thead>
+            <tbody id="forecast-body">
+                <tr><td colspan="3" style="color:#aaa; padding:8px;">Cargando...</td></tr>
+            </tbody>
+        </table>
+        <div class="note">⚠️ Plan de prueba. Modelo: GFS</div>
+    </div>
+
+    <div id="windy"></div>
+
+    <script>
+        const WINDY_MAP_KEY   = 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC';
+        const WINDY_POINT_KEY = 'amFGPm04Ebn1her3CSCbWSukIbY0ULc2';
+        const BASE = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
+
+        function closeForecast() {
+            document.getElementById('forecast-panel').style.display = 'none';
+        }
+
+        function kelvinToCelsius(k) { return (k - 273.15).toFixed(1); }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            return d.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric', month: 'short' })
+                   + ' ' + d.getHours().toString().padStart(2, '0') + ':00';
+        }
+
+        async function fetchPointForecast(lat, lon) {
+            const panel  = document.getElementById('forecast-panel');
+            const body   = document.getElementById('forecast-body');
+            const coords = document.getElementById('forecast-coords');
+
+            panel.style.display = 'block';
+            body.innerHTML = '<tr><td colspan="3" style="color:#aaa; padding:8px;">Cargando...</td></tr>';
+            coords.textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+
+            try {
+                const res = await fetch('https://api.windy.com/api/point-forecast/v2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat, lon, model: 'gfs',
+                        parameters: ['temp', 'precips'],
+                        levels: ['surface'],
+                        key: WINDY_POINT_KEY
+                    })
+                });
+                const data   = await res.json();
+                const times  = data.ts;
+                const temps  = data['temp-surface'];
+                const precip = data['precips-surface'];
+                let rows = '';
+                for (let i = 0; i < Math.min(times.length, 56); i += 2) {
+                    const t = kelvinToCelsius(temps[i]);
+                    const p = precip ? (precip[i] || 0).toFixed(2) : 'N/A';
+                    rows += `<tr>
+                        <td>${formatDate(times[i])}</td>
+                        <td style="color:#ff9966;">${t} °C</td>
+                        <td style="color:#87ceeb;">${p} mm</td>
+                    </tr>`;
+                }
+                body.innerHTML = rows || '<tr><td colspan="3">Sin datos disponibles</td></tr>';
+            } catch (err) {
+                body.innerHTML = '<tr><td colspan="3" style="color:#e84040;">Error al obtener datos</td></tr>';
+            }
+        }
+
+        // Carga GeoJSON con fallback si falla
+        async function cargarCapa(url, estilo, popupFn) {
+            const queryUrl = url + '/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+            try {
+                const res = await fetch(queryUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const capa = L.geoJSON(data, {
+                    style: estilo,
+                    onEachFeature: function(feature, layer) {
+                        if (popupFn) {
+                            layer.bindPopup(popupFn(feature.properties));
+                        }
+                    }
+                });
+                return capa;
+            } catch (err) {
+                console.warn('Capa no disponible:', url, err.message);
+                return L.geoJSON(); // capa vacía si falla
+            }
+        }
+
+        // ── Inicializar Windy ─────────────────────────────────────────────
+        windyInit({
+            key:     WINDY_MAP_KEY,
+            lat:     15.5,
+            lon:     -90.25,
+            zoom:    7,
+            verbose: true,
+            overlay: 'wind'
+        }, windyAPI => {
+
+            const map    = windyAPI.map;
+            const picker = windyAPI.picker;
+
+            // ── GOES Satélite NOAA (activa por defecto) ──────────────────
+            const capaGOES = L.tileLayer.wms(
+                'https://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_time/MapServer/WMSServer', {
+                layers: '3', format: 'image/png', transparent: true,
+                opacity: 0.6, attribution: 'NOAA nowCOAST'
+            });
+            // Activada por defecto
+            capaGOES.addTo(map);
+
+            // ── Capas INAB ────────────────────────────────────────────────
+            Promise.all([
+
+                cargarCapa(
+                    `${BASE}/Municipios_SubregionesINAB/FeatureServer/0`,
+                    { color: '#FFFFFF', weight: 1.5, fillOpacity: 0 },
+                    props => `<b>Municipio:</b> ${props.municipio || props.MUNICIPIO || 'Sin nombre'}<br>
+                              <b>Subregión:</b> ${props.subregion || props.SUBREGION || '-'}`
+                ),
+
+                cargarCapa(
+                    `${BASE}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`,
+                    { color: '#00AA00', weight: 2, fillColor: '#00FF00', fillOpacity: 0.35 },
+                    props => `<b>🌲 Incentivo Forestal</b><br>
+                              ${Object.entries(props).slice(0,4)
+                                .map(([k,v]) => `<b>${k}:</b> ${v}`).join('<br>')}`
+                ),
+
+                cargarCapa(
+                    // Intentamos con URL directa sin encoding del acento
+                    `${BASE}/Susceptibilidad_a_sequias/FeatureServer/0`,
+                    { color: '#FF6600', weight: 1, fillColor: '#FF9933', fillOpacity: 0.3 },
+                    props => `<b>🌵 Susceptibilidad a Sequías</b><br>
+                              ${Object.entries(props).slice(0,4)
+                                .map(([k,v]) => `<b>${k}:</b> ${v}`).join('<br>')}`
+                )
+
+            ]).then(([capaMunicipios, capaIncentivos, capaSequias]) => {
+
+                capaMunicipios.addTo(map);
+                capaIncentivos.addTo(map);
+                capaSequias.addTo(map);
+
+                // ── Menú de control de capas ─────────────────────────────
+                L.control.layers({}, {
+                    '🛰️ Satélite GOES (NOAA)':         capaGOES,
+                    '🗺️ Municipios / Subregiones INAB': capaMunicipios,
+                    '🌲 Incentivos Forestales':          capaIncentivos,
+                    '🌵 Susceptibilidad a Sequías':      capaSequias
+                }, { position: 'topright', collapsed: false }).addTo(map);
+
+            });
+
+            // ── Clic: picker + pronóstico ─────────────────────────────────
+            map.on('click', e => {
+                picker.open({ lat: e.latlng.lat, lon: e.latlng.lng });
+                fetchPointForecast(e.latlng.lat, e.latlng.lng);
+            });
+        });
+    </script>
+</body>
+</html>
