@@ -148,6 +148,13 @@
                     <b>Cod. Dep:</b> ${p.cod_dep || '-'}`;
         });
 
+         const suscepSequias = L.esri.featureLayer({
+            url: `${BASE_INAB}/usceptibilidad_a_sequ%C3%ADas/FeatureServer/0`
+        }).bindPopup(function(layer) {
+            const p = layer.feature.properties;
+            return `<b>Categorias:</b> ${p.cat}<br>
+        });
+        
         const capaIncentivos = L.esri.featureLayer({
             url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`
         }).bindPopup(function(layer) {
@@ -173,6 +180,7 @@
             "🛰️ Satélite GOES (NOAA)": capaGOES,
             "🇬🇹 Límite Guatemala (Buffer 1km)": capaGuate,
             "🗺️ Municipios / Subregiones INAB": capaMunicipios,
+            "🗺️ Susceptibilidad a Sequías": suscepSequia,
             "🌲 Incentivos Forestales": capaIncentivos
         };
 
