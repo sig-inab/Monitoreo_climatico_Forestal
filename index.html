@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo Climático - INAB</title>
+    
+    <!-- 1. Cargar la API de Windy (incluye Leaflet) -->
+    <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+    
+    <!-- 2. Cargar Esri Leaflet para que lea tu mapa web de ArcGIS -->
+    <script src="https://unpkg.com/esri-leaflet"></script>
+
+    <!-- Cargar el Render (Para heredar los colores y simbología de ArcGIS) -->
+    <script src="https://unpkg.com/esri-leaflet-renderers"></script>
+   
+    <!-- Estilos de la vista general -->
+    <style>
+        /* El mapa ocupará toda la pantalla sin bordes blancos */
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #windy { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    
+    <!-- Contenedor del Mapa -->
+    <div id="windy"></div>
+
+    <script>
+        // 3. Opciones de Windy (coordenadas para Guatemala)
+        const options = {
+            key: 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC', // llave desde api.windy.com
+            lat: 15.5, 
+            lon: -90.25,
+            zoom: 7,
+            verbose: true
+        };
+
+        // 4. Inicializar el mapa
+        windyInit(options, windyAPI => {
+    const map = windyAPI.map; 
+    
+    // ==========================================
+    // 1. DEFINIR CAPAS
+    // ==========================================
+
+    // Capa A: Incentivos Forestales
+    const capaIncentivos = L.esri.featureLayer({
+        url: "https://sig.inab.gob.gt/server/rest/services/Hosted/Incentivos_Forestales_INAB_Clima_vista/FeatureServer" // URL featureLayer
+    }).bindPopup(function (layer) {
+        return "<b>Incentivo:</b> " + layer.feature.properties.NOMBRE; 
+    });
+
+    // Capa B: Municipios Subregiones
+    const capaLimites = L.esri.featureLayer({
+        url: "https://sig.inab.gob.gt/server/rest/services/Hosted/Municipios_SubregionesINAB/FeatureServer"
+    });
+
+    // Capa C: SIGAP
+    const capaLimites = L.esri.featureLayer({
+        url: "https://services1.arcgis.com/OuSVoJ40LsglBKLY/arcgis/rest/services/SIGAP_2022/FeatureServer"
+    });
+          
+    // ==========================================
+    // 2. AGREGAR LAS CAPAS AL MAPA
+    // ==========================================
+    // Define cuáles aparezcen encendidas por defecto
+    capaIncentivos.addTo(map);
+
+    // ==========================================
+    // 3. CREAR EL MENÚ DE CONTROL DE CAPAS
+    // ==========================================
+    const misCapas = {
+        "Incentivos Forestales": capaIncentivos,
+        "Ríos": capaRios,
+        "Subregiones INAB": capaSubregiones
+    };
+
+    // Boton de seleccion de capas
+    L.control.layers(null, misCapas, { position: 'topright' }).addTo(map);
+});
