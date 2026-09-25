@@ -63,6 +63,7 @@
     <script>
         const WINDY_MAP_KEY   = 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC';
         const WINDY_POINT_KEY = 'amFGPm04Ebn1her3CSCbWSukIbY0ULc2';
+        const BASE = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
 
         function closeForecast() {
             document.getElementById('forecast-panel').style.display = 'none';
@@ -113,19 +114,29 @@
                 body.innerHTML = rows || '<tr><td colspan="3">Sin datos disponibles</td></tr>';
             } catch (err) {
                 body.innerHTML = '<tr><td colspan="3" style="color:#e84040;">Error al obtener datos</td></tr>';
-                console.error('Point Forecast error:', err);
             }
         }
 
-        // Carga una capa GeoJSON directamente desde ArcGIS Feature Service
-        function cargarCapa(url, estilo) {
-            return fetch(url + '/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson')
-                .then(r => r.json())
-                .then(data => L.geoJSON(data, { style: estilo }))
-                .catch(err => {
-                    console.error('Error cargando capa:', url, err);
-                    return L.geoJSON(); // capa vacía si falla
+        // Carga GeoJSON con fallback si falla
+        async function cargarCapa(url, estilo, popupFn) {
+            const queryUrl = url + '/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson';
+            try {
+                const res = await fetch(queryUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const capa = L.geoJSON(data, {
+                    style: estilo,
+                    onEachFeature: function(feature, layer) {
+                        if (popupFn) {
+                            layer.bindPopup(popupFn(feature.properties));
+                        }
+                    }
                 });
+                return capa;
+            } catch (err) {
+                console.warn('Capa no disponible:', url, err.message);
+                return L.geoJSON(); // capa vacía si falla
+            }
         }
 
         // ── Inicializar Windy ─────────────────────────────────────────────
@@ -135,29 +146,48 @@
             lon:     -90.25,
             zoom:    7,
             verbose: true,
-            overlay: 'wind'  // ← Cambiado de 'rain' a 'wind' (disponible en plan básico)
+            overlay: 'wind'
         }, windyAPI => {
 
             const map    = windyAPI.map;
             const picker = windyAPI.picker;
 
-            // ── Satélite GOES - NOAA ─────────────────────────────────────
+            // ── GOES Satélite NOAA (activa por defecto) ──────────────────
             const capaGOES = L.tileLayer.wms(
                 'https://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_time/MapServer/WMSServer', {
                 layers: '3', format: 'image/png', transparent: true,
-                opacity: 0.65, attribution: 'NOAA nowCOAST'
+                opacity: 0.6, attribution: 'NOAA nowCOAST'
             });
+            // Activada por defecto
+            capaGOES.addTo(map);
 
-            // ── Capas INAB (carga directa GeoJSON, sin esri-leaflet) ─────
-            const BASE = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
-
+            // ── Capas INAB ────────────────────────────────────────────────
             Promise.all([
-                cargarCapa(`${BASE}/Municipios_SubregionesINAB/FeatureServer/0`,
-                    { color: '#FFFFFF', weight: 1, fillOpacity: 0 }),
-                cargarCapa(`${BASE}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`,
-                    { color: '#00AA00', weight: 2, fillOpacity: 0.3 }),
-                cargarCapa(`${BASE}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/0`,
-                    { color: '#FF6600', weight: 1, fillOpacity: 0.3 })
+
+                cargarCapa(
+                    `${BASE}/Municipios_SubregionesINAB/FeatureServer/0`,
+                    { color: '#FFFFFF', weight: 1.5, fillOpacity: 0 },
+                    props => `<b>Municipio:</b> ${props.municipio || props.MUNICIPIO || 'Sin nombre'}<br>
+                              <b>Subregión:</b> ${props.subregion || props.SUBREGION || '-'}`
+                ),
+
+                cargarCapa(
+                    `${BASE}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`,
+                    { color: '#00AA00', weight: 2, fillColor: '#00FF00', fillOpacity: 0.35 },
+                    props => `<b>🌲 Incentivo Forestal</b><br>
+                              ${Object.entries(props).slice(0,4)
+                                .map(([k,v]) => `<b>${k}:</b> ${v}`).join('<br>')}`
+                ),
+
+                cargarCapa(
+                    // Intentamos con URL directa sin encoding del acento
+                    `${BASE}/Susceptibilidad_a_sequias/FeatureServer/0`,
+                    { color: '#FF6600', weight: 1, fillColor: '#FF9933', fillOpacity: 0.3 },
+                    props => `<b>🌵 Susceptibilidad a Sequías</b><br>
+                              ${Object.entries(props).slice(0,4)
+                                .map(([k,v]) => `<b>${k}:</b> ${v}`).join('<br>')}`
+                )
+
             ]).then(([capaMunicipios, capaIncentivos, capaSequias]) => {
 
                 capaMunicipios.addTo(map);
@@ -174,7 +204,7 @@
 
             });
 
-            // ── Clic: picker visual + pronóstico puntual ─────────────────
+            // ── Clic: picker + pronóstico ─────────────────────────────────
             map.on('click', e => {
                 picker.open({ lat: e.latlng.lat, lon: e.latlng.lng });
                 fetchPointForecast(e.latlng.lat, e.latlng.lng);
