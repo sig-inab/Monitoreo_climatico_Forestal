@@ -135,6 +135,12 @@
         });
 
         // 5. Capas de INAB (Feature Layers de ArcGIS Server)
+        const capaGuate = L.esri.featureLayer({
+            url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0` 
+        }).bindPopup(function(layer) {
+            const p = layer.feature.properties;
+        }).addTo(map);
+
         const capaMunicipios = L.esri.featureLayer({
             url: `${BASE_INAB}/Municipios_SubregionesINAB/FeatureServer/0`
         }).bindPopup(function(layer) {
@@ -142,7 +148,7 @@
             return `<b>🗺️ Municipio:</b> ${p.mun || p.municipio || p.MUNICIPIO || '-'}<br>
                     <b>📌 Departamento:</b> ${p.depto || p.DEPTO || '-'}<br>
                     <b>Cod. Dep:</b> ${p.cod_dep || '-'}`;
-        }).addTo(map);
+        });
 
         const capaIncentivos = L.esri.featureLayer({
             url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`
@@ -157,8 +163,6 @@
         // 6. Control de Capas (Esquina superior derecha)
         const baseMaps = {
             "🛰️ Esri Satelital": esriSat,
-            "🗺️ Esri Topográfico": esriStreet,
-            "🌐 OpenStreetMap": osmMap
         };
 
         const overlayMaps = {
