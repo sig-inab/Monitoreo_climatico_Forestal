@@ -15,7 +15,7 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-        #map { width: 100vw; height: 100vh; background: #1a1a1a; }
+        #map { width: 100vw; height: 100vh; background: #111827; }
 
         /* Panel de Pronóstico Puntual */
         #forecast-panel {
@@ -89,7 +89,7 @@
             minZoom: 5
         });
 
-        // 2. Mapas Base (Esri Satélite y Topográfico)
+        // 2. Mapas Base (Opción de desactivar mapa base agregada)
         const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri',
             maxZoom: 19
@@ -105,10 +105,13 @@
             maxZoom: 19
         });
 
-        // 3. Capas Climáticas de OpenWeatherMap
+        // Capa vacía para poder desactivar el mapa base por completo
+        const noBase = L.tileLayer('', { maxZoom: 19 });
+
+        // 3. Capas Climáticas de OpenWeatherMap (Opacidad 1.0)
         const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
             opacity: 1.0, maxZoom: 19
-        });
+        }).addTo(map);
 
         const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
             opacity: 1.0, maxZoom: 19
@@ -122,16 +125,11 @@
             opacity: 1.0, maxZoom: 19
         });
 
-        // Capa inicial de lluvia activa por defecto
-        owmRain.addTo(map);
-
-        // 4. Satélite GOES (NOAA nowCOAST WMS)
-        const capaGOES = L.tileLayer.wms('https://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_time/MapServer/WMSServer', {
-            layers: '3',
-            format: 'image/png',
-            transparent: true,
-            opacity: 0.55,
-            attribution: 'NOAA nowCOAST'
+        // 4. Satélite GOES de la NOAA (Servidor Esri MapServer oficial)
+        const capaGOES = L.esri.dynamicMapLayer({
+            url: 'https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_imagery_time/MapServer',
+            opacity: 0.7,
+            useCors: false
         });
 
         // 5. Capas de INAB
@@ -165,11 +163,11 @@
                     <b>Cat. Ocupacional:</b> ${p.categoriaocupacional || '-'}`;
         }).addTo(map);
 
-        // 6. Control de Capas (Menú despegable)
+        // 6. Control de Capas (Incluye opción sin mapa base)
         const baseMaps = {
             "🛰️ Esri Satelital": esriSat,
             "🗺️ Esri Topográfico": esriStreet,
-            "🌐 OpenStreetMap": osmMap
+            "⬛ Sin mapa base (Fondo oscuro)": noBase
         };
 
         const overlayMaps = {
@@ -184,10 +182,9 @@
             "🌲 Incentivos Forestales": capaIncentivos
         };
 
-        // collapsed: true crea el menú desplegable (botón)
         L.control.layers(baseMaps, overlayMaps, { position: 'topright', collapsed: true }).addTo(map);
 
-        // 7. Funciones para Pronóstico Puntual (al hacer clic en cualquier punto)
+        // 7. Funciones para Pronóstico Puntual
         function closeForecast() {
             document.getElementById('forecast-panel').style.display = 'none';
         }
@@ -215,7 +212,7 @@
                 
                 if (!res.ok) {
                     if (res.status === 401) {
-                        body.innerHTML = '<tr><td colspan="4" style="color:#fbbf24; padding:8px;">La clave de OpenWeather aún se está activando (tarda unos minutos). Por favor reintenta en breve.</td></tr>';
+                        body.innerHTML = '<tr><td colspan="4" style="color:#fbbf24; padding:8px;">La clave de OpenWeather aún se está activando. Por favor reintenta en breve.</td></tr>';
                         return;
                     }
                     throw new Error(`HTTP ${res.status}`);
@@ -224,7 +221,6 @@
                 const data = await res.json();
                 let rows = '';
 
-                // Muestra 8 intervalos (24 horas de pronóstico cada 3 horas)
                 data.list.slice(0, 8).forEach(item => {
                     const temp = Math.round(item.main.temp);
                     const desc = item.weather[0].description;
