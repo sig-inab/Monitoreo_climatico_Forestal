@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Monitoreo Climático - INAB</title>
     
+    <!-- 0. Cargar Leaflet (¡Esta era la línea que faltaba!) -->
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+
     <!-- 1. Cargar la API de Windy -->
     <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
     
@@ -37,8 +40,7 @@
         windyInit(options, windyAPI => {
             const map = windyAPI.map;
             
-            // Aquí agregaremos tus capas de ArcGIS más adelante
-            // Por ahora, solo dejemos que cargue el clima
+            // Más adelante agregaremos las capas de ArcGIS aquí
             
         });
     </script>
