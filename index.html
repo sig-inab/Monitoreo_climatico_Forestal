@@ -107,19 +107,19 @@
 
         // 3. Capas Climáticas de OpenWeatherMap
         const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.75, maxZoom: 19
+            opacity: 0, maxZoom: 19
         });
 
         const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.65, maxZoom: 19
+            opacity: 0, maxZoom: 19
         });
 
         const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.65, maxZoom: 19
+            opacity: 0, maxZoom: 19
         });
 
         const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.65, maxZoom: 19
+            opacity: 0, maxZoom: 19
         });
 
         // Capa inicial de lluvia activa por defecto
@@ -169,7 +169,6 @@
         const baseMaps = {
             "🛰️ Esri Satelital": esriSat,
             "🗺️ Esri Topográfico": esriStreet,
-            "🌐 OpenStreetMap": osmMap
         };
 
         const overlayMaps = {
