@@ -107,19 +107,19 @@
 
         // 3. Capas Climáticas de OpenWeatherMap
         const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0, maxZoom: 19
+            opacity: 1.0, maxZoom: 19
         });
 
         const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0, maxZoom: 19
+            opacity: 1.0, maxZoom: 19
         });
 
         const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0, maxZoom: 19
+            opacity: 1.0, maxZoom: 19
         });
 
         const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0, maxZoom: 19
+            opacity: 1.0, maxZoom: 19
         });
 
         // Capa inicial de lluvia activa por defecto
@@ -148,11 +148,11 @@
                     <b>Cod. Dep:</b> ${p.cod_dep || '-'}`;
         });
 
-         const suscepSequias = L.esri.featureLayer({
-            url: `${BASE_INAB}/usceptibilidad_a_sequ%C3%ADas/FeatureServer/0`
+        const suscepSequias = L.esri.featureLayer({
+            url: `${BASE_INAB}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/0`
         }).bindPopup(function(layer) {
             const p = layer.feature.properties;
-            return `<b>Categorias:</b> ${p.cat}<br>
+            return `<b>🌵 Susceptibilidad:</b> ${p.cat || p.categoria || '-'}`;
         });
         
         const capaIncentivos = L.esri.featureLayer({
@@ -165,10 +165,11 @@
                     <b>Cat. Ocupacional:</b> ${p.categoriaocupacional || '-'}`;
         }).addTo(map);
 
-        // 6. Control de Capas (¡Ahora en menú despegable / icono!)
+        // 6. Control de Capas (Menú despegable)
         const baseMaps = {
             "🛰️ Esri Satelital": esriSat,
             "🗺️ Esri Topográfico": esriStreet,
+            "🌐 OpenStreetMap": osmMap
         };
 
         const overlayMaps = {
@@ -179,11 +180,11 @@
             "🛰️ Satélite GOES (NOAA)": capaGOES,
             "🇬🇹 Límite Guatemala (Buffer 1km)": capaGuate,
             "🗺️ Municipios / Subregiones INAB": capaMunicipios,
-            "🗺️ Susceptibilidad a Sequías": suscepSequia,
+            "🌵 Susceptibilidad a Sequías": suscepSequias,
             "🌲 Incentivos Forestales": capaIncentivos
         };
 
-        // collapsed: true crea el botón/menú desplegable
+        // collapsed: true crea el menú desplegable (botón)
         L.control.layers(baseMaps, overlayMaps, { position: 'topright', collapsed: true }).addTo(map);
 
         // 7. Funciones para Pronóstico Puntual (al hacer clic en cualquier punto)
