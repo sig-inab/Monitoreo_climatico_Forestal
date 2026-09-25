@@ -15,7 +15,14 @@
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-        #map { width: 100vw; height: 100vh; background: #111827; }
+        
+        /* Fondo gris claro estilo windy.app para resaltar los azules de lluvia */
+        #map { width: 100vw; height: 100vh; background: #cbd5e1; }
+
+        /* Filtro de alta intensidad para que los colores de clima resalten al máximo */
+        .owm-vivid-layer {
+            filter: brightness(1.4) saturate(2.2) contrast(1.15) !important;
+        }
 
         /* Panel de Pronóstico Puntual */
         #forecast-panel {
@@ -89,7 +96,7 @@
             minZoom: 5
         });
 
-        // 2. Mapas Base (Opción de desactivar mapa base agregada)
+        // 2. Mapas Base
         const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri',
             maxZoom: 19
@@ -105,30 +112,34 @@
             maxZoom: 19
         });
 
-        // Capa vacía para poder desactivar el mapa base por completo
+        // Capa vacía para fondo claro estilo windy.app
         const noBase = L.tileLayer('', { maxZoom: 19 });
 
-        // 3. Capas Climáticas de OpenWeatherMap (Opacidad 1.0)
+        // 3. Capas Climáticas de OpenWeatherMap (Con filtro de alta intensidad)
         const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            className: 'owm-vivid-layer',
             opacity: 1.0, maxZoom: 19
         }).addTo(map);
 
         const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            className: 'owm-vivid-layer',
             opacity: 1.0, maxZoom: 19
         });
 
         const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            className: 'owm-vivid-layer',
             opacity: 1.0, maxZoom: 19
         });
 
         const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            className: 'owm-vivid-layer',
             opacity: 1.0, maxZoom: 19
         });
 
-        // 4. Satélite GOES de la NOAA (Servidor Esri MapServer oficial)
+        // 4. Satélite GOES de la NOAA
         const capaGOES = L.esri.dynamicMapLayer({
             url: 'https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_imagery_time/MapServer',
-            opacity: 0.7,
+            opacity: 0.75,
             useCors: false
         });
 
@@ -163,11 +174,12 @@
                     <b>Cat. Ocupacional:</b> ${p.categoriaocupacional || '-'}`;
         }).addTo(map);
 
-        // 6. Control de Capas (Incluye opción sin mapa base)
+        // 6. Control de Capas
         const baseMaps = {
             "🛰️ Esri Satelital": esriSat,
             "🗺️ Esri Topográfico": esriStreet,
-            "⬛ Sin mapa base (Fondo oscuro)": noBase
+            "🌐 OpenStreetMap": osmMap,
+            "⬜ Fondo Claro (Estilo Windy.app)": noBase
         };
 
         const overlayMaps = {
