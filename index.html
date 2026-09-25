@@ -40,68 +40,92 @@
             white-space: nowrap;
         }
 
-        #toolbar button:hover {
-            background: rgba(255,255,255,0.25);
-        }
-
+        #toolbar button:hover { background: rgba(255,255,255,0.25); }
         #toolbar button.active {
             background: #e84040;
             border-color: #e84040;
             font-weight: bold;
         }
+
+        /* Tooltip de instrucción */
+        #hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(30,30,30,0.85);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Barra de variables climáticas personalizada -->
+    <!-- Barra de variables climáticas -->
     <div id="toolbar">
-        <button onclick="setOverlay('rain')"       id="btn-rain">🌧️ Precipitación</button>
-        <button onclick="setOverlay('temp')"       id="btn-temp">🌡️ Temperatura</button>
-        <button onclick="setOverlay('wind')"       id="btn-wind">💨 Viento</button>
-        <button onclick="setOverlay('clouds')"     id="btn-clouds">☁️ Nubes</button>
-        <button onclick="setOverlay('pressure')"   id="btn-pressure">📊 Presión</button>
-        <button onclick="setOverlay('thunder')"    id="btn-thunder">⚡ Tormentas</button>
-        <button onclick="setOverlay('snowcover')"  id="btn-snow">❄️ Nieve</button>
-        <button onclick="setOverlay('rh')"         id="btn-rh">💧 Humedad</button>
-        <button onclick="setOverlay('dewpoint')"   id="btn-dew">🌫️ Punto de Rocío</button>
+        <button id="btn-rain"     onclick="setOverlay('rain')">🌧️ Precipitación</button>
+        <button id="btn-temp"     onclick="setOverlay('temp')">🌡️ Temperatura</button>
+        <button id="btn-wind"     onclick="setOverlay('wind')">💨 Viento</button>
+        <button id="btn-clouds"   onclick="setOverlay('clouds')">☁️ Nubes</button>
+        <button id="btn-pressure" onclick="setOverlay('pressure')">📊 Presión</button>
     </div>
+
+    <!-- Ayuda al usuario -->
+    <div id="hint">📍 Haz clic en cualquier punto del mapa para ver el pronóstico diario</div>
 
     <!-- Contenedor del Mapa -->
     <div id="windy"></div>
 
     <script>
         let windyStore = null;
+        let windyPicker = null;
 
-        // Función para cambiar la variable climática activa
+        // Cambia la capa activa
         function setOverlay(overlay) {
-            if (windyStore) {
-                windyStore.set('overlay', overlay);
-                // Resaltar el botón activo
+            if (!windyStore) return;
+            const resultado = windyStore.set('overlay', overlay);
+            if (resultado) {
                 document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
-                document.getElementById('btn-' + overlay)?.classList.add('active');
+                const btn = document.getElementById('btn-' + overlay);
+                if (btn) btn.classList.add('active');
             }
         }
 
-        // Opciones de Windy (abre con Precipitación por defecto)
+        // Opciones de Windy
         const options = {
-            key: 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC', 
-            lat: 15.5, 
+            key: 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC',
+            lat: 15.5,
             lon: -90.25,
             zoom: 7,
             verbose: true,
-            overlay: 'rain'  // Abre mostrando Precipitación
+            overlay: 'rain'  // Abre con Precipitación
         };
 
         // Inicializar el mapa
         windyInit(options, windyAPI => {
             const map = windyAPI.map;
-            windyStore = windyAPI.store;
+            windyStore  = windyAPI.store;
+            windyPicker = windyAPI.picker;
 
-            // Marcar "Precipitación" como activo al inicio
+            // Activar botón de Precipitación al inicio
             document.getElementById('btn-rain').classList.add('active');
 
+            // =============================================
+            // WEATHER PICKER: Al hacer clic → pronóstico
+            // =============================================
+            map.on('click', function (e) {
+                windyPicker.open({ 
+                    lat: e.latlng.lat, 
+                    lon: e.latlng.lng 
+                });
+            });
+
             // Aquí agregaremos las capas de ArcGIS más adelante
-            
+
         });
     </script>
 </body>
