@@ -13,119 +13,182 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
         #windy { width: 100vw; height: 100vh; }
 
-        /* Barra de variables climáticas */
-        #toolbar {
+        /* Panel de pronóstico puntual */
+        #forecast-panel {
+            display: none;
             position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 70px;
+            left: 15px;
             z-index: 1000;
-            background: rgba(30, 30, 30, 0.88);
-            border-radius: 30px;
-            padding: 8px 14px;
-            display: flex;
-            gap: 6px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            background: rgba(15, 20, 30, 0.93);
+            color: #fff;
+            border-radius: 12px;
+            padding: 15px 18px;
+            width: 330px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            font-size: 13px;
         }
-
-        #toolbar button {
+        #forecast-panel h3 { margin: 0 0 6px 0; font-size: 14px; color: #e84040; }
+        #forecast-panel .close-btn {
+            position: absolute; top: 10px; right: 12px;
+            cursor: pointer; font-size: 16px; color: #aaa;
+        }
+        #forecast-panel .close-btn:hover { color: #fff; }
+        #forecast-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+        #forecast-table th {
             background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px;
-            padding: 6px 14px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
+            padding: 5px; text-align: center; font-size: 11px;
         }
-
-        #toolbar button:hover { background: rgba(255,255,255,0.25); }
-        #toolbar button.active {
-            background: #e84040;
-            border-color: #e84040;
-            font-weight: bold;
+        #forecast-table td {
+            padding: 4px 6px; text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
         }
-
-        /* Tooltip de instrucción */
-        #hint {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(30,30,30,0.85);
-            color: #fff;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 12px;
-            pointer-events: none;
-        }
+        .note { font-size: 10px; color: #888; margin-top: 8px; }
     </style>
 </head>
 <body>
 
-    <!-- Barra de variables climáticas -->
-    <div id="toolbar">
-        <button id="btn-rain"     onclick="setOverlay('rain')">🌧️ Precipitación</button>
-        <button id="btn-temp"     onclick="setOverlay('temp')">🌡️ Temperatura</button>
-        <button id="btn-wind"     onclick="setOverlay('wind')">💨 Viento</button>
-        <button id="btn-clouds"   onclick="setOverlay('clouds')">☁️ Nubes</button>
-        <button id="btn-pressure" onclick="setOverlay('pressure')">📊 Presión</button>
+    <!-- Panel de Pronóstico Puntual -->
+    <div id="forecast-panel">
+        <span class="close-btn" onclick="closeForecast()">✕</span>
+        <h3>📍 Pronóstico Puntual</h3>
+        <div id="forecast-coords" style="font-size:11px; color:#aaa;"></div>
+        <table id="forecast-table">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>🌡️ Temp (°C)</th>
+                    <th>🌧️ Precip (mm)</th>
+                </tr>
+            </thead>
+            <tbody id="forecast-body">
+                <tr><td colspan="3" style="color:#aaa; padding:8px;">Cargando...</td></tr>
+            </tbody>
+        </table>
+        <div class="note">⚠️ Plan de prueba: datos ligeramente modificados. Modelo: GFS</div>
     </div>
 
-    <!-- Ayuda al usuario -->
-    <div id="hint">📍 Haz clic en cualquier punto del mapa para ver el pronóstico diario</div>
-
-    <!-- Contenedor del Mapa -->
+    <!-- Mapa -->
     <div id="windy"></div>
 
     <script>
-        let windyStore = null;
-        let windyPicker = null;
+        const WINDY_MAP_KEY   = 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC';
+        const WINDY_POINT_KEY = 'amFGPm04Ebn1her3CSCbWSukIbY0ULc2';
 
-        // Cambia la capa activa
-        function setOverlay(overlay) {
-            if (!windyStore) return;
-            const resultado = windyStore.set('overlay', overlay);
-            if (resultado) {
-                document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
-                const btn = document.getElementById('btn-' + overlay);
-                if (btn) btn.classList.add('active');
+        function closeForecast() {
+            document.getElementById('forecast-panel').style.display = 'none';
+        }
+
+        function kelvinToCelsius(k) {
+            return (k - 273.15).toFixed(1);
+        }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            return d.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric', month: 'short' })
+                   + ' ' + d.getHours().toString().padStart(2, '0') + ':00';
+        }
+
+        async function fetchPointForecast(lat, lon) {
+            const panel  = document.getElementById('forecast-panel');
+            const body   = document.getElementById('forecast-body');
+            const coords = document.getElementById('forecast-coords');
+
+            panel.style.display = 'block';
+            body.innerHTML = '<tr><td colspan="3" style="color:#aaa; padding:8px;">Cargando...</td></tr>';
+            coords.textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+
+            try {
+                const res  = await fetch('https://api.windy.com/api/point-forecast/v2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat:        lat,
+                        lon:        lon,
+                        model:      'gfs',
+                        parameters: ['temp', 'precips'],
+                        levels:     ['surface'],
+                        key:        WINDY_POINT_KEY
+                    })
+                });
+
+                const data   = await res.json();
+                const times  = data.ts;
+                const temps  = data['temp-surface'];
+                const precip = data['precips-surface'];
+
+                // Mostrar cada 6 horas (aprox 7 días)
+                let rows = '';
+                for (let i = 0; i < Math.min(times.length, 56); i += 2) {
+                    const t = kelvinToCelsius(temps[i]);
+                    const p = precip ? (precip[i] || 0).toFixed(2) : 'N/A';
+                    rows += `<tr>
+                        <td>${formatDate(times[i])}</td>
+                        <td style="color:#ff9966;">${t} °C</td>
+                        <td style="color:#87ceeb;">${p} mm</td>
+                    </tr>`;
+                }
+                body.innerHTML = rows || '<tr><td colspan="3">Sin datos disponibles</td></tr>';
+
+            } catch (err) {
+                body.innerHTML = '<tr><td colspan="3" style="color:#e84040;">Error al obtener datos</td></tr>';
+                console.error(err);
             }
         }
 
-        // Opciones de Windy
-        const options = {
-            key: 'p7SzpUA9KIIWa1BTSmchBma64F1YC3GC',
-            lat: 15.5,
-            lon: -90.25,
-            zoom: 7,
+        // ── Inicializar Windy ──────────────────────────────────────────────
+        windyInit({
+            key:     WINDY_MAP_KEY,
+            lat:     15.5,
+            lon:     -90.25,
+            zoom:    7,
             verbose: true,
-            overlay: 'rain'  // Abre con Precipitación
-        };
+            overlay: 'rain'
+        }, windyAPI => {
+            const map    = windyAPI.map;
+            const picker = windyAPI.picker;
 
-        // Inicializar el mapa
-        windyInit(options, windyAPI => {
-            const map = windyAPI.map;
-            windyStore  = windyAPI.store;
-            windyPicker = windyAPI.picker;
-
-            // Activar botón de Precipitación al inicio
-            document.getElementById('btn-rain').classList.add('active');
-
-            // =============================================
-            // WEATHER PICKER: Al hacer clic → pronóstico
-            // =============================================
-            map.on('click', function (e) {
-                windyPicker.open({ 
-                    lat: e.latlng.lat, 
-                    lon: e.latlng.lng 
-                });
+            // ── Satélite GOES - NOAA nowCOAST ─────────────────────────────
+            const capaGOES = L.tileLayer.wms(
+                'https://nowcoast.noaa.gov/arcgis/services/nowcoast/sat_meteo_imagery_time/MapServer/WMSServer', {
+                layers:      '1',
+                format:      'image/png',
+                transparent: true,
+                opacity:     0.65,
+                attribution: 'NOAA nowCOAST'
             });
 
-            // Aquí agregaremos las capas de ArcGIS más adelante
+            // ── Capas INAB ─────────────────────────────────────────────────
+            const capaMunicipios = L.esri.featureLayer({
+                url: 'https://sig.inab.gob.gt/server/rest/services/Hosted/Municipios_SubregionesINAB/FeatureServer/0'
+            });
 
+            const capaIncentivos = L.esri.featureLayer({
+                url: 'https://sig.inab.gob.gt/server/rest/services/Hosted/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0'
+            });
+
+            const capaSequias = L.esri.featureLayer({
+                url: 'https://sig.inab.gob.gt/server/rest/services/Hosted/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/0'
+            });
+
+            // Capas encendidas al inicio
+            capaMunicipios.addTo(map);
+            capaIncentivos.addTo(map);
+            capaSequias.addTo(map);
+
+            // ── Menú de control de capas ───────────────────────────────────
+            L.control.layers({}, {
+                '🛰️ Satélite GOES (NOAA)':          capaGOES,
+                '🗺️ Municipios / Subregiones INAB':  capaMunicipios,
+                '🌲 Incentivos Forestales':           capaIncentivos,
+                '🌵 Susceptibilidad a Sequías':       capaSequias
+            }, { position: 'topright', collapsed: false }).addTo(map);
+
+            // ── Clic en mapa: Picker visual + Pronóstico puntual ───────────
+            map.on('click', e => {
+                picker.open({ lat: e.latlng.lat, lon: e.latlng.lng });
+                fetchPointForecast(e.latlng.lat, e.latlng.lng);
+            });
         });
     </script>
 </body>
