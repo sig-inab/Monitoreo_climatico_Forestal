@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoreo Climático - INAB</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet@3.0.10/dist/esri-leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet-renderers@3.0.0/dist/esri-leaflet-renderers.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+        #map { width: 100vw; height: 100vh; background: #cbd5e1; }
+
+        /* Panel de Pronóstico Puntual */
+        #forecast-panel {
+            display: none;
+            position: absolute;
+            bottom: 25px;
+            left: 15px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.94);
+            color: #fff;
+            border-radius: 12px;
+            padding: 14px 16px;
+            width: 340px;
+            max-height: 380px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #forecast-panel h3 { margin: 0 0 4px 0; font-size: 14px; color: #38bdf8; }
+        #forecast-panel .close-btn {
+            position: absolute; top: 10px; right: 12px;
+            cursor: pointer; font-size: 16px; color: #94a3b8;
+        }
+        #forecast-panel .close-btn:hover { color: #fff; }
+        #forecast-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+        #forecast-table th {
+            background: rgba(255,255,255,0.08);
+            padding: 6px; text-align: center; color: #cbd5e1; font-weight: 600;
+        }
+        #forecast-table td {
+            padding: 5px 6px; text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="forecast-panel">
+        <span class="close-btn" onclick="closeForecast()">✕</span>
+        <h3>📍 Pronóstico Meteorológico</h3>
+        <div id="forecast-coords" style="font-size:11px; color:#94a3b8; margin-bottom:6px;"></div>
+        <table id="forecast-table">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Estado</th>
+                    <th>Temp</th>
+                    <th>Lluvia</th>
+                </tr>
+            </thead>
+            <tbody id="forecast-body">
+                <tr><td colspan="4" style="color:#aaa; padding:8px;">Haz clic en el mapa</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        const OWM_KEY = 'afbf7f009aa64d9a8b52ecd837be74f1';
+        const BASE_INAB = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
+
+        const map = L.map('map', {
+            center: [15.5, -90.25],
+            zoom: 7,
+            maxZoom: 19,
+            minZoom: 5
+        });
+
+        // ── MAPAS BASE ─────────────────────────────────────────────────────
+        const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri', maxZoom: 19
+        }).addTo(map);
+
+        const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri', maxZoom: 19
+        });
+
+        const osmMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap', maxZoom: 19
+        });
+
+        const noBase = L.tileLayer('', { maxZoom: 19 });
+
+        // ── CAPAS CLIMÁTICAS ───────────────────────────────────────────────
+
+        // OpenWeatherMap - Temperatura (COBERTURA COMPLETA - cada pixel tiene color)
+        const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            opacity: 0.85, maxZoom: 19
+        });
+
+        // OpenWeatherMap - Lluvia (overlay transparente donde no llueve)
+        const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            opacity: 1.0, maxZoom: 19
+        });
+
+        // OpenWeatherMap - Viento
+        const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            opacity: 0.85, maxZoom: 19
+        });
+
+        // OpenWeatherMap - Nubes
+        const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            opacity: 0.85, maxZoom: 19
+        });
+
+        // OpenWeatherMap - Presión
+        const owmPressure = L.tileLayer(`https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
+            opacity: 0.85, maxZoom: 19
+        });
+
+        // ── RAINVIEWER - Radar de precipitación en TIEMPO REAL ─────────────
+        // (Gratis, sin API key, colores vivos y visibles)
+        let radarLayer = null;
+
+        fetch('https://api.rainviewer.com/public/weather-maps.json')
+            .then(r => r.json())
+            .then(data => {
+                const lastFrame = data.radar.past[data.radar.past.length - 1];
+                radarLayer = L.tileLayer(
+                    `https://tilecache.rainviewer.com${lastFrame.path}/256/{z}/{x}/{y}/6/1_1.png`, {
+                    opacity: 0.85,
+                    maxZoom: 19,
+                    zIndex: 10
+                }).addTo(map);
+
+                // Agregar al control de capas después de cargarse
+                layerControl.addOverlay(radarLayer, '🌧️ Radar Lluvia Tiempo Real (RainViewer)');
+            })
+            .catch(err => console.warn('RainViewer no disponible:', err));
+
+        // ── SATÉLITE GOES NOAA ─────────────────────────────────────────────
+        const capaGOES = L.esri.dynamicMapLayer({
+            url: 'https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_imagery_time/MapServer',
+            opacity: 0.75,
+            useCors: false
+        });
+
+        // ── CAPAS DE INAB ──────────────────────────────────────────────────
+        const capaGuate = L.esri.featureLayer({
+            url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0`
+        }).addTo(map);
+
+        const capaMunicipios = L.esri.featureLayer({
+            url: `${BASE_INAB}/Municipios_SubregionesINAB/FeatureServer/0`
+        }).bindPopup(function(layer) {
+            const p = layer.feature.properties;
+            return `<b>🗺️ Municipio:</b> ${p.mun || p.municipio || p.MUNICIPIO || '-'}<br>
+                    <b>📌 Departamento:</b> ${p.depto || p.DEPTO || '-'}<br>
+                    <b>Cod. Dep:</b> ${p.cod_dep || '-'}`;
+        });
+
+        const suscepSequias = L.esri.featureLayer({
+            url: `${BASE_INAB}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/0`
+        }).bindPopup(function(layer) {
+            const p = layer.feature.properties;
+            return `<b>🌵 Susceptibilidad:</b> ${p.cat || p.categoria || '-'}`;
+        });
+
+        const capaIncentivos = L.esri.featureLayer({
+            url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`
+        }).bindPopup(function(layer) {
+            const p = layer.feature.properties;
+            return `<b>🌲 Incentivo Forestal</b><br>
+                    <b>Programa:</b> ${p.programa || '-'}<br>
+                    <b>Recarga Hídrica:</b> ${p.recarga_hidrica || '-'}<br>
+                    <b>Cat. Ocupacional:</b> ${p.categoriaocupacional || '-'}`;
+        }).addTo(map);
+
+        // ── CONTROL DE CAPAS ───────────────────────────────────────────────
+        const baseMaps = {
+            "🛰️ Esri Satelital": esriSat,
+            "🗺️ Esri Topográfico": esriStreet,
+            "🌐 OpenStreetMap": osmMap,
+            "⬜ Fondo Claro": noBase
+        };
+
+        const overlayMaps = {
+            "🌡️ Temperatura (OpenWeather)": owmTemp,
+            "🌧️ Lluvia OWM (OpenWeather)": owmRain,
+            "💨 Viento (OpenWeather)": owmWind,
+            "☁️ Nubosidad (OpenWeather)": owmClouds,
+            "📊 Presión (OpenWeather)": owmPressure,
+            "🛰️ Satélite GOES (NOAA)": capaGOES,
+            "🇬🇹 Límite Guatemala (Buffer 1km)": capaGuate,
+            "🗺️ Municipios / Subregiones INAB": capaMunicipios,
+            "🌵 Susceptibilidad a Sequías": suscepSequias,
+            "🌲 Incentivos Forestales": capaIncentivos
+        };
+
+        const layerControl = L.control.layers(baseMaps, overlayMaps, {
+            position: 'topright', collapsed: true
+        }).addTo(map);
+
+        // ── PRONÓSTICO PUNTUAL ─────────────────────────────────────────────
+        function closeForecast() {
+            document.getElementById('forecast-panel').style.display = 'none';
+        }
+
+        function formatDate(dtTxt) {
+            const d = new Date(dtTxt);
+            return d.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric' }) + ' ' +
+                   d.getHours().toString().padStart(2, '0') + ':00';
+        }
+
+        map.on('click', async function(e) {
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+            const panel = document.getElementById('forecast-panel');
+            const body = document.getElementById('forecast-body');
+            const coords = document.getElementById('forecast-coords');
+
+            panel.style.display = 'block';
+            body.innerHTML = '<tr><td colspan="4" style="color:#aaa; padding:8px;">Cargando...</td></tr>';
+            coords.textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+
+            try {
+                const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${OWM_KEY}`);
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        body.innerHTML = '<tr><td colspan="4" style="color:#fbbf24; padding:8px;">La clave de OpenWeather aún se está activando. Reintenta en unos minutos.</td></tr>';
+                        return;
+                    }
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                const data = await res.json();
+                let rows = '';
+                data.list.slice(0, 8).forEach(item => {
+                    const temp = Math.round(item.main.temp);
+                    const desc = item.weather[0].description;
+                    const rain = item.rain && item.rain['3h'] ? item.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                    rows += `<tr>
+                        <td>${formatDate(item.dt_txt)}</td>
+                        <td style="text-transform:capitalize;">${desc}</td>
+                        <td style="color:#f97316; font-weight:bold;">${temp}°C</td>
+                        <td style="color:#38bdf8;">${rain}</td>
+                    </tr>`;
+                });
+                body.innerHTML = rows || '<tr><td colspan="4">Sin datos</td></tr>';
+            } catch (err) {
+                console.error(err);
+                body.innerHTML = '<tr><td colspan="4" style="color:#ef4444;">Error al consultar el clima</td></tr>';
+            }
+        });
+    </script>
+</body>
+</html>
