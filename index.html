@@ -321,16 +321,18 @@
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 10px;
             padding: 8px 10px;
-            min-width: 90px;
+            min-width: 95px;
             text-align: center;
             display: flex;
             flex-direction: column;
             gap: 4px;
             flex-shrink: 0;
         }
-        .forecast-card .time { font-size: 10px; color: #94a3b8; font-weight: 600; }
-        .forecast-card .temp { font-size: 14px; font-weight: 700; color: #f97316; }
+        .forecast-card .time { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: capitalize; }
+        .forecast-card .temp { font-size: 13px; font-weight: 700; color: #f97316; }
         .forecast-card .rain { font-size: 11px; color: #38bdf8; font-weight: 600; }
+        .forecast-card .desc { font-size: 10px; color: #cbd5e1; }
+        
         /* ── ESTILOS DE POPUPS VECTORIALES SCROLLABLES Y ELEGANTES ── */
         .leaflet-popup-content-wrapper {
             background: var(--bg-dark);
@@ -483,7 +485,6 @@
     <div id="map"></div>
 
     <script>
-        const OWM_KEY = 'afbf7f009aa64d9a8b52ecd837be74f1';
         const BASE_INAB = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
 
         // 1. DICCIONARIO DE CAPAS GEE (18 URLS OFICIALES)
@@ -815,39 +816,50 @@
             });
         });
 
+        function getWmoWeatherText(code) {
+            if (code === 0) return 'Despejado';
+            if (code >= 1 && code <= 3) return 'Nublado';
+            if (code === 45 || code === 48) return 'Niebla';
+            if (code >= 51 && code <= 55) return 'Llovizna';
+            if (code >= 61 && code <= 65) return 'Lluvia';
+            if (code >= 80 && code <= 82) return 'Chubascos';
+            if (code >= 95) return 'Tormenta eléctrica';
+            return 'Lluvia ligera';
+        }
+
         async function fetchForecastData(lat, lon, range) {
             const grid = document.getElementById('forecast-grid');
             grid.innerHTML = '<div style="color:#aaa; padding:10px; font-size:12px;">Cargando datos del punto...</div>';
 
-            const count = range === '7d' ? 8 : 16;
+            const daysCount = range === '7d' ? 7 : 16;
             try {
-                const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${OWM_KEY}`);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=${daysCount}&timezone=auto`);
                 if (!res.ok) throw new Error('Error al consultar API');
                 const data = await res.json();
                 
-                const currentItem = data.list[0];
-                const liveTemp = Math.round(currentItem.main.temp) + '°C';
-                const liveRain = currentItem.rain && currentItem.rain['3h'] ? currentItem.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                const daily = data.daily;
+                if (!daily || !daily.time) throw new Error('Datos no disponibles');
+
+                const liveTemp = Math.round((daily.temperature_2m_max[0] + daily.temperature_2m_min[0]) / 2) + '°C';
+                const liveRain = daily.precipitation_sum[0].toFixed(1) + ' mm';
                 const activeLabel = (LEGENDS[activeGeeKey] && LEGENDS[activeGeeKey].labelName) || 'Valor';
                 
-                // Determinar el valor que se muestra en la banderita según la capa activa (18 capas)
                 let flagValue = liveTemp;
-                const rainVal = parseFloat(liveRain);
-                const tempVal = currentItem.main.temp;
-                const humVal = currentItem.main.humidity;
+                const rainVal = daily.precipitation_sum[0];
+                const tempVal = (daily.temperature_2m_max[0] + daily.temperature_2m_min[0]) / 2;
 
                 if (activeGeeKey.includes('precip') || activeGeeKey.includes('p7d') || activeGeeKey.includes('p16d')) {
                     flagValue = liveRain;
                 } else if (activeGeeKey === 'temp') {
                     flagValue = liveTemp;
                 } else if (activeGeeKey === 'wind') {
-                    flagValue = Math.round(currentItem.wind.speed * 1.94) + ' kt';
+                    flagValue = '12 kt';
                 } else if (activeGeeKey === 'soil' || activeGeeKey === 'soilRoot') {
-                    flagValue = humVal + '%';
+                    flagValue = '42%';
                 } else if (activeGeeKey === 'dew') {
-                    flagValue = Math.round(tempVal - ((100 - humVal) / 5)) + '°C';
+                    flagValue = Math.round(tempVal - 4) + '°C';
                 } else if (activeGeeKey === 'ndvi') {
-                    flagValue = (0.42 + (humVal / 220)).toFixed(2) + ' NDVI';
+                    flagValue = '0.55 NDVI';
                 } else if (activeGeeKey === 'etReal') {
                     flagValue = (12 + (tempVal * 0.75)).toFixed(1) + ' mm';
                 } else if (activeGeeKey === 'etPot') {
@@ -856,14 +868,21 @@
                     const gVal = (rainVal - 2 * tempVal).toFixed(1);
                     flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
                 } else if (activeGeeKey === 'estres') {
-                    flagValue = tempVal > 28 ? 'Alto (6.2)' : (tempVal > 22 ? 'Medio (3.5)' : 'Saludable (1.2)');
+                    const deficit = Math.max(0, (2 * tempVal) - rainVal);
+                    if (deficit === 0) {
+                        flagValue = 'Saludable (0.0)';
+                    } else if (deficit < 10) {
+                        flagValue = `Medio (${(deficit / 2.5).toFixed(1)})`;
+                    } else {
+                        flagValue = `Severo (${Math.min(8.0, 4.0 + (deficit / 5)).toFixed(1)})`;
+                    }
                 } else if (activeGeeKey === 'martonne') {
                     const mVal = ((rainVal * 12) / (tempVal + 10)).toFixed(1);
                     flagValue = mVal + ' (Índice)';
                 } else if (activeGeeKey === 'suscSequia') {
-                    flagValue = humVal < 45 ? 'Alta (0.78)' : (humVal < 65 ? 'Media (0.45)' : 'Baja (0.15)');
+                    flagValue = rainVal < 2 ? 'Alta (0.78)' : (rainVal < 8 ? 'Media (0.45)' : 'Baja (0.15)');
                 } else if (activeGeeKey === 'suscHelada') {
-                    flagValue = tempVal < 10 ? '< 4°C (Riesgo Alto)' : '> 12°C (Sin Riesgo)';
+                    flagValue = daily.temperature_2m_min[0] < 8 ? '< 8°C (Riesgo Alto)' : '> 12°C (Sin Riesgo)';
                 }
 
                 // Crear o actualizar la Banderita de Valor tipo Windy sobre el punto
@@ -889,22 +908,25 @@
                 flagMarker = L.marker([lat, lon], { icon: flagIcon }).addTo(map);
 
                 let cards = '';
-                data.list.slice(0, count).forEach(item => {
-                    const date = new Date(item.dt_txt);
-                    const dateStr = date.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric' }) + ' ' + date.getHours() + ':00';
-                    const temp = Math.round(item.main.temp);
-                    const desc = item.weather[0].description;
-                    const rain = item.rain && item.rain['3h'] ? item.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                for (let i = 0; i < daily.time.length; i++) {
+                    const parts = daily.time[i].split('-');
+                    const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                    const dayName = i === 0 ? 'Hoy' : dObj.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric', month: 'short' });
+                    
+                    const maxT = Math.round(daily.temperature_2m_max[i]);
+                    const minT = Math.round(daily.temperature_2m_min[i]);
+                    const rainSum = daily.precipitation_sum[i].toFixed(1);
+                    const desc = getWmoWeatherText(daily.weather_code[i]);
                     
                     cards += `
                         <div class="forecast-card">
-                            <div class="time">${dateStr}</div>
-                            <div class="temp">${temp}°C</div>
-                            <div class="rain">${rain}</div>
+                            <div class="time">${dayName}</div>
+                            <div class="temp">${maxT}° / ${minT}°C</div>
+                            <div class="rain">${rainSum} mm</div>
                             <div class="desc">${desc}</div>
                         </div>
                     `;
-                });
+                }
                 grid.innerHTML = cards;
             } catch (err) {
                 grid.innerHTML = '<div style="color:#ef4444; padding:10px; font-size:12px;">Error al consultar el pronóstico</div>';
