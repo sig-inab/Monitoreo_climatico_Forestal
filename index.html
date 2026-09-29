@@ -33,7 +33,15 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #0f172a; }
         #map { width: 100vw; height: 100vh; background: #1e293b; }
 
-        /* ── MENÚ HAMBURGUESA (CAPAS INAB - IZQUIERDA ARRIBA) ── */
+        /* Efecto de Mezcla para Relieve Hillshade */
+        .leaflet-tile-pane .leaflet-layer {
+            mix-blend-mode: normal;
+        }
+        .gee-tile-layer {
+            mix-blend-mode: multiply; /* Mezcla el clima con las sombras 3D del relieve */
+        }
+
+        /* ── MENÚ HAMBURGUESA (CAPAS INAB) ── */
         .hamburger-btn {
             position: absolute;
             top: 15px;
@@ -88,7 +96,6 @@
         .drawer-checkbox-item:hover { background: rgba(255,255,255,0.08); }
         .drawer-checkbox-item input { accent-color: var(--accent-green); cursor: pointer; }
 
-
         /* ── BARRA DE LEYENDA FLOTANTE (SUPERIOR CENTRO) ── */
         .legend-bar-container {
             position: absolute;
@@ -124,7 +131,6 @@
             font-weight: 600;
         }
 
-
         /* ── BARRA LATERAL DERECHA DE VARIABLES GEE (VERTICAL) ── */
         .right-gee-sidebar {
             position: absolute;
@@ -142,7 +148,7 @@
             border: 1px solid var(--border-glass);
             max-height: 85vh;
             overflow-y: auto;
-            width: 180px;
+            width: 185px;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.2) transparent;
         }
@@ -189,7 +195,6 @@
             color: #fff;
             border-color: var(--accent-blue);
         }
-
 
         /* ── PANEL HORIZONTAL DE PRONÓSTICO PUNTUAL (ABAJO) ── */
         #forecast-panel {
@@ -276,7 +281,11 @@
             <span>🇬🇹 Límite Guatemala (Buffer 1km)</span>
         </label>
 
-        <h4 style="margin-top:10px;"><i class="fa-solid fa-layer-group"></i> Mapa Base</h4>
+        <h4 style="margin-top:10px;"><i class="fa-solid fa-mountain"></i> Relieve 3D & Mapa Base</h4>
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkHillshade" checked onchange="toggleHillshade(this.checked)">
+            <span>⛰️ Relieve 3D (Hillshade)</span>
+        </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" checked onchange="changeBaseMap('sat')">
             <span>🛰️ Esri Satelital</span>
@@ -288,10 +297,6 @@
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" onchange="changeBaseMap('osm')">
             <span>🌐 OpenStreetMap</span>
-        </label>
-        <label class="drawer-checkbox-item">
-            <input type="radio" name="baseRadio" onchange="changeBaseMap('none')">
-            <span>⬜ Fondo Oscuro Neutro</span>
         </label>
     </div>
 
@@ -305,7 +310,7 @@
     <!-- BARRA LATERAL DERECHA DE VARIABLES GEE (VERTICAL) -->
     <div class="right-gee-sidebar" id="geeSidebar">
         <button class="gee-btn anim-btn active" id="btnAnimWind" onclick="toggleWindAnimation()">
-            <i class="fa-solid fa-wind"></i> Partículas Viento
+            <i class="fa-solid fa-wind"></i> Viento Animado
         </button>
         <button class="gee-btn active" onclick="activateGeeLayer('precip')"><i class="fa-solid fa-cloud-rain"></i> Lluvia CHIRPS</button>
         <button class="gee-btn" onclick="activateGeeLayer('temp')"><i class="fa-solid fa-temperature-high"></i> Temp (°C)</button>
@@ -383,15 +388,25 @@
             suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/35fd72f45b5ca31bd142567d1ea11efc-958718752874349d76af5657d1087faf/tiles/{z}/{x}/{y}'
         };
 
-        // DICCIONARIO DE LEYENDAS Y SIMBOLOGÍAS
+        // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
         const LEGENDS = {
             precip: { title: '🌧️ Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'] },
             temp: { title: '🌡️ Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'] },
             wind: { title: '💨 Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'] },
-            soil: { title: '🪵 Humedad Suelo ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'] },
+            soil: { title: '🪵 Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'] },
             dew: { title: '💧 Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'] },
+            precipAccum: { title: '🌧️ Tasa Precipitación Diaria (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'] },
             precipMensual: { title: '🌧️ Precipitación Acumulada Mensual (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'] },
+            soilRoot: { title: '🌱 Humedad Suelo Radicular (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'] },
             ndvi: { title: '🍃 Salud Forestal NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'] },
+            etReal: { title: '💦 Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'] },
+            etPot: { title: '☀️ Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'] },
+            p7d: { title: '🌧️ Pronóstico Lluvia Acumulada 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'] },
+            p16d: { title: '🌧️ Pronóstico Lluvia Acumulada 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'] },
+            gaussen: { title: '🔥 Déficit Ombrotérmico Gaussen (P < 2T)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'] },
+            estres: { title: '🍂 Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'] },
+            martonne: { title: '🏜️ Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'] },
+            suscSequia: { title: '⚠️ Vulnerabilidad Forestal Compuesta (Sequía)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'] },
             suscHelada: { title: '❄️ Susceptibilidad a Heladas Forestales', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'] }
         };
 
@@ -403,15 +418,25 @@
             minZoom: 5
         });
 
-        // 3. MAPAS BASE
+        // 3. CAPA DE RELIEVE 3D HILLSHADE (ESRI WORLD HILLSHADE - GRATUITO Y RÁPIDO)
+        const hillshadeLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            opacity: 0.65
+        }).addTo(map);
+
+        function toggleHillshade(isChecked) {
+            if (isChecked) map.addLayer(hillshadeLayer);
+            else map.removeLayer(hillshadeLayer);
+        }
+
+        // 4. MAPAS BASE
         const baseLayers = {
             sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map),
             topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }),
-            none: L.tileLayer('', { maxZoom: 19 })
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
         };
 
-        // 4. CAPAS INAB ARCGIS
+        // 5. CAPAS INAB ARCGIS
         const inabLayers = {
             buffer: L.esri.featureLayer({ url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0` }).addTo(map),
             municipios: L.esri.featureLayer({
@@ -425,39 +450,39 @@
             }).bindPopup(l => `<b>🌲 Incentivo Forestal</b><br>Programa: ${l.feature.properties.programa || '-'}<br>Recarga: ${l.feature.properties.recarga_hidrica || '-'}`).addTo(map)
         };
 
-        // 5. ANIMACIÓN DE PARTÍCULAS DE VIENTO REGIONALES Y LIGERAS (ESTILO WINDY)
+        // 6. ANIMACIÓN GLOBAL Y LIGERA DE VIENTO (ESTILO WINDY PLANETARIO)
         let velocityLayer = null;
         let windAnimActive = true;
 
-        const windData = [{
+        const globalWindData = [{
             header: {
                 parameterCategory: 2, parameterNumber: 2,
-                nx: 12, ny: 12, basicAngle: 0, subDivisions: 0,
-                lo1: -95.0, la1: 20.0, lo2: -83.0, la2: 10.0,
-                dx: 1.0, dy: 1.0, date: "2026-09-28T18:00:00Z"
+                nx: 36, ny: 18, basicAngle: 0, subDivisions: 0,
+                lo1: -180.0, la1: 85.0, lo2: 180.0, la2: -85.0,
+                dx: 10.0, dy: 10.0, date: "2026-09-28T18:00:00Z"
             },
-            data: Array(144).fill(-3.8)
+            data: Array(648).fill(-4.2)
         }, {
             header: {
                 parameterCategory: 2, parameterNumber: 3,
-                nx: 12, ny: 12, basicAngle: 0, subDivisions: 0,
-                lo1: -95.0, la1: 20.0, lo2: -83.0, la2: 10.0,
-                dx: 1.0, dy: 1.0, date: "2026-09-28T18:00:00Z"
+                nx: 36, ny: 18, basicAngle: 0, subDivisions: 0,
+                lo1: -180.0, la1: 85.0, lo2: 180.0, la2: -85.0,
+                dx: 10.0, dy: 10.0, date: "2026-09-28T18:00:00Z"
             },
-            data: Array(144).fill(-1.8)
+            data: Array(648).fill(-1.5)
         }];
 
         function initWindAnimation() {
             velocityLayer = L.velocityLayer({
                 displayValues: false,
-                data: windData,
-                maxVelocity: 10,
-                velocityScale: 0.004,
-                particleAge: 120,
-                particleMultiplier: 1 / 600,
-                lineWidth: 1.5,
+                data: globalWindData,
+                maxVelocity: 12,
+                velocityScale: 0.003,
+                particleAge: 140,
+                particleMultiplier: 1 / 2500,
+                lineWidth: 1.2,
                 particleColor: '#e0f2fe',
-                opacity: 0.75
+                opacity: 0.65
             }).addTo(map);
         }
 
@@ -476,7 +501,7 @@
 
         initWindAnimation();
 
-        // 6. CONTROL DE CAPA GEE ACTIVA
+        // 7. CONTROL DE CAPA GEE ACTIVA
         let currentGeeLayer = null;
         let activeGeeKey = 'precip';
 
@@ -484,7 +509,11 @@
             if (currentGeeLayer) map.removeLayer(currentGeeLayer);
             
             activeGeeKey = key;
-            currentGeeLayer = L.tileLayer(GEE_URLS[key], { opacity: 0.85, maxZoom: 19 }).addTo(map);
+            currentGeeLayer = L.tileLayer(GEE_URLS[key], { 
+                opacity: 0.78, 
+                maxZoom: 19,
+                className: 'gee-tile-layer'
+            }).addTo(map);
 
             document.querySelectorAll('.right-gee-sidebar .gee-btn:not(.anim-btn):not(.contour-btn)').forEach(btn => btn.classList.remove('active'));
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
@@ -503,7 +532,7 @@
 
         activateGeeLayer('precip');
 
-        // 7. LÓGICA DE CONTORNOS
+        // 8. LÓGICA DE CONTORNOS
         let isotermasActive = false;
         let isoyetasActive = false;
 
@@ -517,7 +546,7 @@
             }
         }
 
-        // 8. MENÚ HAMBURGUESA Y CAPAS INAB
+        // 9. MENÚ HAMBURGUESA Y CAPAS INAB
         function toggleDrawer() {
             document.getElementById('inabDrawer').classList.toggle('open');
         }
@@ -532,7 +561,7 @@
             baseLayers[key].addTo(map);
         }
 
-        // 9. PRONÓSTICO PUNTUAL HORIZONTAL
+        // 10. PRONÓSTICO PUNTUAL HORIZONTAL
         let currentClickLat = null;
         let currentClickLon = null;
 
