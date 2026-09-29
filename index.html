@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitoreo Climático - INAB</title>
+    <title>Sistema de Monitoreo Climático Forestal — INAB</title>
 
     <!-- Leaflet CSS y JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,234 +13,318 @@
     <script src="https://unpkg.com/esri-leaflet@3.0.10/dist/esri-leaflet.js"></script>
     <script src="https://unpkg.com/esri-leaflet-renderers@3.0.0/dist/esri-leaflet-renderers.js"></script>
 
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-        #map { width: 100vw; height: 100vh; background: #1a1a1a; }
+    <!-- Leaflet Velocity (Animación de Partículas de Viento tipo Windy) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-velocity@2.1.2/dist/leaflet-velocity.css" />
+    <script src="https://unpkg.com/leaflet-velocity@2.1.2/dist/leaflet-velocity.js"></script>
 
-        /* Panel de Pronóstico Puntual */
+    <!-- FontAwesome para Íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        :root {
+            --bg-dark: rgba(15, 23, 42, 0.92);
+            --border-glass: rgba(255, 255, 255, 0.15);
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-pink: #f472b6;
+            --text-light: #f8fafc;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #0f172a; }
+        #map { width: 100vw; height: 100vh; background: #1e293b; }
+
+        /* ── BARRA SUPERIOR DE VARIABLES GEE (TIPO WINDY) ── */
+        .top-gee-bar {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            gap: 6px;
+            background: var(--bg-dark);
+            padding: 6px 12px;
+            border-radius: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            max-width: 90vw;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .top-gee-bar::-webkit-scrollbar { display: none; }
+
+        .gee-btn {
+            background: rgba(255,255,255,0.06);
+            color: #94a3b8;
+            border: 1px solid transparent;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gee-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .gee-btn.active {
+            background: var(--accent-blue);
+            color: #0f172a;
+            font-weight: 700;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        }
+        .gee-btn.anim-btn {
+            background: rgba(244, 114, 182, 0.15);
+            color: var(--accent-pink);
+            border-color: rgba(244, 114, 182, 0.4);
+        }
+        .gee-btn.anim-btn.active {
+            background: var(--accent-pink);
+            color: #0f172a;
+            box-shadow: 0 0 12px rgba(244, 114, 182, 0.5);
+        }
+
+        /* ── MENÚ HAMBURGUESA (CAPAS INAB) ── */
+        .hamburger-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border-glass);
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s ease;
+        }
+        .hamburger-btn:hover { transform: scale(1.05); color: var(--accent-green); }
+
+        .inab-drawer {
+            position: absolute;
+            top: 65px;
+            left: 15px;
+            z-index: 1000;
+            background: var(--bg-dark);
+            color: #fff;
+            width: 280px;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .inab-drawer.open { display: flex; }
+        .inab-drawer h4 { margin: 0 0 8px 0; font-size: 13px; color: var(--accent-green); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+
+        .drawer-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+        }
+        .drawer-checkbox-item:hover { background: rgba(255,255,255,0.08); }
+        .drawer-checkbox-item input { accent-color: var(--accent-green); cursor: pointer; }
+
+        /* ── BOTONES FLOTANTES DE CONTORNOS ── */
+        .contour-toggle-group {
+            position: absolute;
+            top: 70px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .contour-btn {
+            background: var(--bg-dark);
+            color: #cbd5e1;
+            border: 1px solid var(--border-glass);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .contour-btn.active {
+            border-color: var(--accent-blue);
+            color: #fff;
+            background: rgba(56, 189, 248, 0.2);
+        }
+
+        /* ── BARRA DE LEYENDA FLOTANTE (ESTILO WINDY) ── */
+        .legend-bar-container {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--bg-dark);
+            padding: 10px 18px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 300px;
+        }
+        .legend-title { font-size: 11px; font-weight: 700; color: #e2e8f0; letter-spacing: 0.5px; }
+        .legend-gradient-bar {
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .legend-ticks {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* ── PANEL DE PRONÓSTICO PUNTUAL ── */
         #forecast-panel {
             display: none;
             position: absolute;
-            bottom: 25px;
+            bottom: 85px;
             left: 15px;
             z-index: 1000;
-            background: rgba(15, 23, 42, 0.94);
+            background: var(--bg-dark);
             color: #fff;
-            border-radius: 12px;
-            padding: 14px 16px;
-            width: 340px;
-            max-height: 380px;
+            border-radius: 16px;
+            padding: 16px;
+            width: 360px;
+            max-height: 400px;
             overflow-y: auto;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
         }
-        #forecast-panel h3 { margin: 0 0 4px 0; font-size: 14px; color: #38bdf8; }
-        #forecast-panel .close-btn {
-            position: absolute; top: 10px; right: 12px;
-            cursor: pointer; font-size: 16px; color: #94a3b8;
-        }
+        #forecast-panel h3 { margin: 0 0 4px 0; font-size: 14px; color: var(--accent-blue); display: flex; align-items: center; justify-content: space-between; }
+        #forecast-panel .close-btn { cursor: pointer; font-size: 16px; color: #94a3b8; }
         #forecast-panel .close-btn:hover { color: #fff; }
-        #forecast-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-        #forecast-table th {
-            background: rgba(255,255,255,0.08);
-            padding: 6px; text-align: center; color: #cbd5e1; font-weight: 600;
-        }
-        #forecast-table td {
-            padding: 5px 6px; text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
+        .forecast-tabs { display: flex; gap: 8px; margin: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+        .tab-btn { background: none; border: none; color: #94a3b8; font-size: 11px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+        .tab-btn.active { color: #fff; background: rgba(255,255,255,0.15); }
+        #forecast-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+        #forecast-table th { background: rgba(255,255,255,0.08); padding: 6px; text-align: center; color: #cbd5e1; }
+        #forecast-table td { padding: 6px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
 
-    <!-- Panel de Pronóstico Puntual -->
-    <div id="forecast-panel">
-        <span class="close-btn" onclick="closeForecast()">✕</span>
-        <h3>📍 Pronóstico Meteorológico</h3>
-        <div id="forecast-coords" style="font-size:11px; color:#94a3b8; margin-bottom:6px;"></div>
-        <table id="forecast-table">
-            <thead>
-                <tr>
-                    <th>Fecha / Hora</th>
-                    <th>Estado</th>
-                    <th>Temp</th>
-                    <th>Lluvia</th>
-                </tr>
-            </thead>
-            <tbody id="forecast-body">
-                <tr><td colspan="4" style="color:#aaa; padding:8px;">Haz clic en el mapa...</td></tr>
-            </tbody>
-        </table>
+    <!-- MENÚ HAMBURGUESA (CAPAS INAB) -->
+    <div class="hamburger-btn" onclick="toggleDrawer()" title="Capas Institucionales INAB">
+        <i class="fa-solid fa-bars"></i>
     </div>
 
-    <!-- Mapa Principal -->
-    <div id="map"></div>
+    <div class="inab-drawer" id="inabDrawer">
+        <h4><i class="fa-solid fa-tree"></i> Capas Institucionales INAB</h4>
+        
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkIncentivos" checked onchange="toggleInabLayer('incentivos', this.checked)">
+            <span>🌲 Incentivos Forestales</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkMunicipios" onchange="toggleInabLayer('municipios', this.checked)">
+            <span>🗺️ Municipios / Subregiones</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkSequias" onchange="toggleInabLayer('sequias', this.checked)">
+            <span>🌵 Susceptibilidad a Sequías (/17)</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkBuffer" checked onchange="toggleInabLayer('buffer', this.checked)">
+            <span>🇬🇹 Límite Guatemala (Buffer 1km)</span>
+        </label>
 
-    <script>
-        const OWM_KEY = 'afbf7f009aa64d9a8b52ecd837be74f1';
-        const BASE_INAB = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
+        <h4 style="margin-top:12px;"><i class="fa-solid fa-layer-group"></i> Mapa Base</h4>
+        <label class="drawer-checkbox-item">
+            <input type="radio" name="baseRadio" checked onchange="changeBaseMap('sat')">
+            <span>🛰️ Esri Satelital</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="radio" name="baseRadio" onchange="changeBaseMap('topo')">
+            <span>🗺️ Esri Topográfico</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="radio" name="baseRadio" onchange="changeBaseMap('osm')">
+            <span>🌐 OpenStreetMap</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="radio" name="baseRadio" onchange="changeBaseMap('none')">
+            <span>⬜ Fondo Oscuro Neutro</span>
+        </label>
+    </div>
 
-        // 1. Inicializar Mapa (Guatemala)
-        const map = L.map('map', {
-            center: [15.5, -90.25],
-            zoom: 7,
-            maxZoom: 19,
-            minZoom: 5
-        });
+    <!-- BARRA SUPERIOR DE VARIABLES GEE (TIPO WINDY) -->
+    <div class="top-gee-bar" id="geeBar">
+        <button class="gee-btn anim-btn active" id="btnAnimWind" onclick="toggleWindAnimation()">
+            <i class="fa-solid fa-wind"></i> 🍃 Partículas de Viento (Animado)
+        </button>
+        <button class="gee-btn" onclick="activateGeeLayer('precip')"><i class="fa-solid fa-cloud-rain"></i> Lluvia CHIRPS</button>
+        <button class="gee-btn" onclick="activateGeeLayer('temp')"><i class="fa-solid fa-temperature-high"></i> Temp (°C)</button>
+        <button class="gee-btn" onclick="activateGeeLayer('wind')"><i class="fa-solid fa-wind"></i> Viento (kt)</button>
+        <button class="gee-btn" onclick="activateGeeLayer('soil')"><i class="fa-solid fa-mound"></i> Humedad Suelo</button>
+        <button class="gee-btn" onclick="activateGeeLayer('dew')"><i class="fa-solid fa-droplet"></i> Punto Rocío</button>
+        <button class="gee-btn" onclick="activateGeeLayer('precipAccum')"><i class="fa-solid fa-cloud-showers-heavy"></i> Precip Acum Diaria</button>
+        <button class="gee-btn" onclick="activateGeeLayer('precipMensual')"><i class="fa-solid fa-calendar-days"></i> Precip Acum Mensual</button>
+        <button class="gee-btn" onclick="activateGeeLayer('soilRoot')"><i class="fa-solid fa-plant-wilt"></i> Suelo Radicular</button>
+        <button class="gee-btn" onclick="activateGeeLayer('ndvi')"><i class="fa-solid fa-leaf"></i> Salud NDVI</button>
+        <button class="gee-btn" onclick="activateGeeLayer('etReal')"><i class="fa-solid fa-water"></i> ET Real</button>
+        <button class="gee-btn" onclick="activateGeeLayer('etPot')"><i class="fa-solid fa-sun"></i> ET Potencial</button>
+        <button class="gee-btn" onclick="activateGeeLayer('p7d')"><i class="fa-solid fa-cloud-bolt"></i> Pronóstico 7D</button>
+        <button class="gee-btn" onclick="activateGeeLayer('p16d')"><i class="fa-solid fa-umbrella"></i> Pronóstico 16D</button>
+        <button class="gee-btn" onclick="activateGeeLayer('gaussen')"><i class="fa-solid fa-fire"></i> Déficit Gaussen</button>
+        <button class="gee-btn" onclick="activateGeeLayer('estres')"><i class="fa-solid fa-temperature-arrow-up"></i> Estrés Foliar</button>
+        <button class="gee-btn" onclick="activateGeeLayer('martonne')"><i class="fa-solid fa-compass-drafting"></i> Aridez Martonne</button>
+        <button class="gee-btn" onclick="activateGeeLayer('suscSequia')"><i class="fa-solid fa-triangle-exclamation"></i> Suscep. Sequía</button>
+        <button class="gee-btn" onclick="activateGeeLayer('suscHelada')"><i class="fa-solid fa-snowflake"></i> Suscep. Heladas</button>
+    </div>
 
-        // 2. Mapas Base
-        const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri', maxZoom: 19
-        }).addTo(map);
+    <!-- BOTONES FLOTANTES DE CONTORNOS -->
+    <div class="contour-toggle-group">
+        <button class="contour-btn" id="btnIsotermas" onclick="toggleContour('isotermas')">
+            <i class="fa-solid fa-route"></i> Isotermas (2°C)
+        </button>
+        <button class="contour-btn" id="btnIsoyetas" onclick="toggleContour('isoyetas')">
+            <i class="fa-solid fa-water"></i> Isoyetas (10mm)
+        </button>
+    </div>
 
-        const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri', maxZoom: 19
-        });
+    <!-- BARRA DE LEYENDA FLOTANTE -->
+    <div class="legend-bar-container" id="legendContainer">
+        <div class="legend-title" id="legendTitle">🌧️ Precipitación Diaria CHIRPS (mm)</div>
+        <div class="legend-gradient-bar" id="legendGradient"></div>
+        <div class="legend-ticks" id="legendTicks"></div>
+    </div>
 
-        const osmMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap', maxZoom: 19
-        });
-
-        const noBase = L.tileLayer('', { maxZoom: 19 });
-
-        // 3. Capas Climáticas (OpenWeatherMap)
-        const owmTemp = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.85, maxZoom: 19
-        });
-
-        const owmRain = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 1.0, maxZoom: 19
-        });
-
-        const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.85, maxZoom: 19
-        });
-
-        const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.85, maxZoom: 19
-        });
-
-        const owmPressure = L.tileLayer(`https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, {
-            opacity: 0.85, maxZoom: 19
-        });
-
-        // Satélite GOES NOAA
-        const capaGOES = L.esri.dynamicMapLayer({
-            url: 'https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_imagery_time/MapServer',
-            opacity: 0.75,
-            useCors: false
-        });
-
-        // 4. Capas Institucionales INAB
-        const capaGuate = L.esri.featureLayer({
-            url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0`
-        }).addTo(map);
-
-        const capaMunicipios = L.esri.featureLayer({
-            url: `${BASE_INAB}/Municipios_SubregionesINAB/FeatureServer/0`
-        }).bindPopup(function(layer) {
-            const p = layer.feature.properties;
-            return `<b>🗺️ Municipio:</b> ${p.mun || p.municipio || p.MUNICIPIO || '-'}<br>
-                    <b>📌 Departamento:</b> ${p.depto || p.DEPTO || '-'}<br>
-                    <b>Cod. Dep:</b> ${p.cod_dep || '-'}`;
-        });
-
-        // Capa de Susceptibilidad a Sequías (Subcapa 17 corregida)
-        const suscepSequias = L.esri.featureLayer({
-            url: `${BASE_INAB}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/17`
-        }).bindPopup(function(layer) {
-            const p = layer.feature.properties;
-            return `<b>🌵 Susceptibilidad a Sequías</b><br>
-                    <b>Categoría:</b> ${p.categorias || 'Sin información'}`;
-        });
-
-        const capaIncentivos = L.esri.featureLayer({
-            url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`
-        }).bindPopup(function(layer) {
-            const p = layer.feature.properties;
-            return `<b>🌲 Incentivo Forestal</b><br>
-                    <b>Programa:</b> ${p.programa || '-'}<br>
-                    <b>Recarga Hídrica:</b> ${p.recarga_hidrica || '-'}<br>
-                    <b>Cat. Ocupacional:</b> ${p.categoriaocupacional || '-'}`;
-        }).addTo(map);
-
-        // 5. Control de Capas (Menu colapsado)
-        const baseMaps = {
-            "🛰️ Esri Satelital": esriSat,
-            "🗺️ Esri Topográfico": esriStreet,
-            "🌐 OpenStreetMap": osmMap,
-            "⬜ Desactivar Mapa Base": noBase
-        };
-
-        const overlayMaps = {
-            "🌡️ Temperatura": owmTemp,
-            "🌧️ Precipitación / Lluvia": owmRain,
-            "💨 Viento": owmWind,
-            "☁️ Nubosidad": owmClouds,
-            "📊 Presión": owmPressure,
-            "🛰️ Satélite GOES (NOAA)": capaGOES,
-            "🌵 Susceptibilidad a Sequías": suscepSequias,
-            "🇬🇹 Límite Guatemala (Buffer 1km)": capaGuate,
-            "🗺️ Municipios / Subregiones INAB": capaMunicipios,
-            "🌲 Incentivos Forestales": capaIncentivos
-        };
-
-        L.control.layers(baseMaps, overlayMaps, {
-            position: 'topright',
-            collapsed: true
-        }).addTo(map);
-
-        // 6. Lógica de Pronóstico Puntual (Al hacer clic en el mapa)
-        function closeForecast() {
-            document.getElementById('forecast-panel').style.display = 'none';
-        }
-
-        function formatDate(dtTxt) {
-            const d = new Date(dtTxt);
-            return d.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric' }) + ' ' +
-                   d.getHours().toString().padStart(2, '0') + ':00';
-        }
-
-        map.on('click', async function(e) {
-            const lat = e.latlng.lat;
-            const lon = e.latlng.lng;
-            const panel = document.getElementById('forecast-panel');
-            const body = document.getElementById('forecast-body');
-            const coords = document.getElementById('forecast-coords');
-
-            panel.style.display = 'block';
-            body.innerHTML = '<tr><td colspan="4" style="color:#aaa; padding:8px;">Cargando pronóstico...</td></tr>';
-            coords.textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
-
-            try {
-                const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${OWM_KEY}`);
-                if (!res.ok) {
-                    if (res.status === 401) {
-                        body.innerHTML = '<tr><td colspan="4" style="color:#fbbf24; padding:8px;">Clave API en activación. Reintenta en unos minutos.</td></tr>';
-                        return;
-                    }
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                const data = await res.json();
-                let rows = '';
-                data.list.slice(0, 8).forEach(item => {
-                    const temp = Math.round(item.main.temp);
-                    const desc = item.weather[0].description;
-                    const rain = item.rain && item.rain['3h'] ? item.rain['3h'].toFixed(1) + ' mm' : '0 mm';
-                    rows += `<tr>
-                        <td>${formatDate(item.dt_txt)}</td>
-                        <td style="text-transform:capitalize;">${desc}</td>
-                        <td style="color:#f97316; font-weight:bold;">${temp}°C</td>
-                        <td style="color:#38bdf8;">${rain}</td>
-                    </tr>`;
-                });
-                body.innerHTML = rows || '<tr><td colspan="4">Sin datos de pronóstico</td></tr>';
-            } catch (err) {
-                console.error(err);
-                body.innerHTML = '<tr><td colspan="4" style="color:#ef4444;">Error al consultar datos climáticos</td></tr>';
-            }
-        });
-    </script>
-</body>
-</html>
+    <!-- PANEL DE PRONÓSTICO PUNTUAL -->
+    <div id="forecast-panel">
