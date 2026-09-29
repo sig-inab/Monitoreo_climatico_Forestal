@@ -193,11 +193,12 @@
             border-color: var(--accent-blue);
         }
 
-        /* ── BANDERITA DE VALOR PUNTUAL (ESTILO WINDY FLAG MARKER) ── */
+        /* ── BANDERITA DE VALOR PUNTUAL (ESTILO WINDY FLAG MARKER - LADO IZQUIERDO) ── */
         .windy-flag-container {
             position: relative;
-            transform: translate(-10px, -65px);
+            transform: translate(-105px, -65px);
             pointer-events: auto;
+            z-index: 1001;
         }
         .windy-flag-box {
             background: rgba(15, 23, 42, 0.95);
@@ -474,7 +475,7 @@
             etPot: { title: 'Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
             p7d: { title: 'Pronóstico Lluvia 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'], labelName: 'Pronóstico 7D' },
             p16d: { title: 'Pronóstico Lluvia 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'], labelName: 'Pronóstico 16D' },
-            gaussen: { title: 'Déficit Hídrico (Índice Ombrotérmico Gaussen)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Excedente Hídrico (+20)'], labelName: 'Déficit Gaussen' },
+            gaussen: { title: 'Déficit Hídrico (Índice Ombrotérmico Gaussen)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Excedente (+20)'], labelName: 'Déficit Gaussen' },
             estres: { title: 'Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'], labelName: 'Estrés Foliar' },
             martonne: { title: 'Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
             suscSequia: { title: 'Susceptibilidad Forestal (Sequías)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'], labelName: 'Vulnerab. Sequía' },
@@ -512,6 +513,8 @@
         };
 
         // 5. CAPAS INAB ARCGIS
+        const popupOptionsRight = { offset: L.point(85, -25) };
+
         const inabLayers = {
             buffer: L.esri.featureLayer({ url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0` }).addTo(map),
             municipios: L.esri.featureLayer({
@@ -538,11 +541,16 @@
                         <b>🌿 Subregión INAB:</b> ${formattedSubreg}
                     </div>
                 `;
-            }),
+            }, popupOptionsRight),
             incentivos: L.esri.featureLayer({
                 url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`,
                 style: function() {
-                    return { color: '#22c55e', weight: 1.5, fillColor: '#22c55e', fillOpacity: 0.35 };
+                    return { 
+                        color: '#9333ea',        // Borde Morado / Púrpura Intenso (Alto Contraste)
+                        weight: 2, 
+                        fillColor: '#c084fc',    // Relleno Violeta Claro
+                        fillOpacity: 0.45 
+                    };
                 }
             }).bindPopup(l => {
                 const p = l.feature.properties;
@@ -557,11 +565,16 @@
                         <b>Especies:</b> ${p.especies_concat || '-'}
                     </div>
                 `;
-            }).addTo(map),
+            }, popupOptionsRight).addTo(map),
             ecosistemas: L.esri.featureLayer({
                 url: `${BASE_INAB}/TipoEcosistemasGuatemala_Geo/FeatureServer/1`,
                 style: function() {
-                    return { color: '#10b981', weight: 1, fillColor: '#34d399', fillOpacity: 0.25 };
+                    return { 
+                        color: '#0284c7',        // Borde Azul Cian
+                        weight: 1.5, 
+                        fillColor: '#38bdf8',    // Relleno Cian Celeste
+                        fillOpacity: 0.3 
+                    };
                 }
             }).bindPopup(l => {
                 const p = l.feature.properties;
@@ -571,11 +584,16 @@
                         <b>Tipo Ecosistema:</b> ${p.tipoecosistema || '-'}
                     </div>
                 `;
-            }),
+            }, popupOptionsRight),
             repoblacion: L.esri.featureLayer({
                 url: `${BASE_INAB}/Obligaciones_de_Repoblaci%C3%B3n_Forestal/FeatureServer/1`,
                 style: function() {
-                    return { color: '#f59e0b', weight: 1.5, fillColor: '#fbbf24', fillOpacity: 0.35 };
+                    return { 
+                        color: '#c026d3',        // Borde Magenta / Fucsia Intenso (Alto Contraste)
+                        weight: 2, 
+                        fillColor: '#e879f9',    // Relleno Magenta Claro
+                        fillOpacity: 0.45 
+                    };
                 }
             }).bindPopup(l => {
                 const p = l.feature.properties;
@@ -589,7 +607,7 @@
                         <b>Área Obligación:</b> ${areaStr}
                     </div>
                 `;
-            })
+            }, popupOptionsRight)
         };
 
         // 6. ANIMACIÓN GLOBAL Y LIGERA DE VIENTO (ESTILO WINDY PLANETARIO)
@@ -784,7 +802,7 @@
                     flagValue = (22 + (tempVal * 1.05)).toFixed(1) + ' mm';
                 } else if (activeGeeKey === 'gaussen') {
                     const gVal = (rainVal - 2 * tempVal).toFixed(1);
-                    flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
+                    flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Excedente)');
                 } else if (activeGeeKey === 'estres') {
                     flagValue = tempVal > 28 ? 'Alto (6.2)' : (tempVal > 22 ? 'Medio (3.5)' : 'Saludable (1.2)');
                 } else if (activeGeeKey === 'martonne') {
