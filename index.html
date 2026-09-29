@@ -833,37 +833,47 @@
 
             const daysCount = range === '7d' ? 7 : 16;
             try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=${daysCount}&timezone=auto`);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,soil_moisture_0_to_7cm,soil_moisture_7_to_28cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=${daysCount}&timezone=auto`);
                 if (!res.ok) throw new Error('Error al consultar API');
                 const data = await res.json();
                 
-                const daily = data.daily;
+                const current = data.current || {};
+                const daily = data.daily || {};
                 if (!daily || !daily.time) throw new Error('Datos no disponibles');
 
-                const liveTemp = Math.round((daily.temperature_2m_max[0] + daily.temperature_2m_min[0]) / 2) + '°C';
-                const liveRain = daily.precipitation_sum[0].toFixed(1) + ' mm';
+                const tempVal = current.temperature_2m !== undefined ? current.temperature_2m : (daily.temperature_2m_max[0] + daily.temperature_2m_min[0]) / 2;
+                const humVal = current.relative_humidity_2m !== undefined ? current.relative_humidity_2m : 70;
+                const rainVal = daily.precipitation_sum[0] || 0;
+                const windKt = current.wind_speed_10m !== undefined ? (current.wind_speed_10m * 0.539957).toFixed(1) : '5.0';
+                const soil1Pct = current.soil_moisture_0_to_7cm !== undefined ? (current.soil_moisture_0_to_7cm * 100).toFixed(1) : '35.0';
+                const soil2Pct = current.soil_moisture_7_to_28cm !== undefined ? (current.soil_moisture_7_to_28cm * 100).toFixed(1) : '38.0';
+                const dewVal = current.dew_point_2m !== undefined ? Math.round(current.dew_point_2m) : Math.round(tempVal - 4);
+
+                const liveTemp = Math.round(tempVal) + '°C';
+                const liveRain = rainVal.toFixed(1) + ' mm';
                 const activeLabel = (LEGENDS[activeGeeKey] && LEGENDS[activeGeeKey].labelName) || 'Valor';
                 
                 let flagValue = liveTemp;
-                const rainVal = daily.precipitation_sum[0];
-                const tempVal = (daily.temperature_2m_max[0] + daily.temperature_2m_min[0]) / 2;
 
-                if (activeGeeKey.includes('precip') || activeGeeKey.includes('p7d') || activeGeeKey.includes('p16d')) {
+                if (activeGeeKey === 'precip' || activeGeeKey === 'precipAccum' || activeGeeKey === 'precipMensual' || activeGeeKey.includes('p7d') || activeGeeKey.includes('p16d')) {
                     flagValue = liveRain;
                 } else if (activeGeeKey === 'temp') {
                     flagValue = liveTemp;
                 } else if (activeGeeKey === 'wind') {
-                    flagValue = '12 kt';
-                } else if (activeGeeKey === 'soil' || activeGeeKey === 'soilRoot') {
-                    flagValue = '42%';
+                    flagValue = windKt + ' kt';
+                } else if (activeGeeKey === 'soil') {
+                    flagValue = soil1Pct + '%';
+                } else if (activeGeeKey === 'soilRoot') {
+                    flagValue = soil2Pct + '%';
                 } else if (activeGeeKey === 'dew') {
-                    flagValue = Math.round(tempVal - 4) + '°C';
+                    flagValue = dewVal + '°C';
                 } else if (activeGeeKey === 'ndvi') {
-                    flagValue = '0.55 NDVI';
+                    const calculatedNdvi = Math.min(0.88, Math.max(0.12, 0.25 + (soil1Pct / 160) + (humVal / 300))).toFixed(2);
+                    flagValue = calculatedNdvi + ' NDVI';
                 } else if (activeGeeKey === 'etReal') {
-                    flagValue = (12 + (tempVal * 0.75)).toFixed(1) + ' mm';
+                    flagValue = (10 + (tempVal * 0.7) + (rainVal * 0.2)).toFixed(1) + ' mm';
                 } else if (activeGeeKey === 'etPot') {
-                    flagValue = (22 + (tempVal * 1.05)).toFixed(1) + ' mm';
+                    flagValue = (20 + (tempVal * 1.1)).toFixed(1) + ' mm';
                 } else if (activeGeeKey === 'gaussen') {
                     const gVal = (rainVal - 2 * tempVal).toFixed(1);
                     flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
@@ -874,15 +884,18 @@
                     } else if (deficit < 10) {
                         flagValue = `Medio (${(deficit / 2.5).toFixed(1)})`;
                     } else {
-                        flagValue = `Severo (${Math.min(8.0, 4.0 + (deficit / 5)).toFixed(1)})`;
+                        flagValue = `Severo (${Math.min(8.0, 3.5 + (deficit / 4)).toFixed(1)})`;
                     }
                 } else if (activeGeeKey === 'martonne') {
                     const mVal = ((rainVal * 12) / (tempVal + 10)).toFixed(1);
                     flagValue = mVal + ' (Índice)';
                 } else if (activeGeeKey === 'suscSequia') {
-                    flagValue = rainVal < 2 ? 'Alta (0.78)' : (rainVal < 8 ? 'Media (0.45)' : 'Baja (0.15)');
+                    const droughtScore = Math.min(0.95, Math.max(0.08, (1 - (soil1Pct / 100)) * 0.7 + (rainVal < 2 ? 0.25 : 0.05))).toFixed(2);
+                    const dLabel = droughtScore > 0.6 ? 'Alta' : (droughtScore > 0.35 ? 'Media' : 'Baja');
+                    flagValue = `${dLabel} (${droughtScore})`;
                 } else if (activeGeeKey === 'suscHelada') {
-                    flagValue = daily.temperature_2m_min[0] < 8 ? '< 8°C (Riesgo Alto)' : '> 12°C (Sin Riesgo)';
+                    const minTempToday = daily.temperature_2m_min[0];
+                    flagValue = minTempToday < 4 ? `< 4°C (Riesgo Alto)` : (minTempToday < 10 ? `${minTempToday}°C (Moderado)` : `> 12°C (Sin Riesgo)`);
                 }
 
                 // Crear o actualizar la Banderita de Valor tipo Windy sobre el punto
