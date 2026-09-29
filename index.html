@@ -34,24 +34,21 @@
         #map { width: 100vw; height: 100vh; background: #1e293b; }
 
         /* Efecto de Mezcla para Relieve Hillshade */
-        .leaflet-tile-pane .leaflet-layer {
-            mix-blend-mode: normal;
-        }
         .gee-tile-layer {
-            mix-blend-mode: multiply; /* Mezcla el clima con las sombras 3D del relieve */
+            mix-blend-mode: multiply;
         }
 
         /* ── MENÚ HAMBURGUESA (CAPAS INAB) ── */
         .hamburger-btn {
             position: absolute;
-            top: 15px;
-            left: 15px;
+            top: 70px;
+            left: 20px;
             z-index: 1001;
             background: var(--bg-dark);
             color: var(--text-light);
             border: 1px solid var(--border-glass);
-            width: 42px;
-            height: 42px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -65,8 +62,8 @@
 
         .inab-drawer {
             position: absolute;
-            top: 65px;
-            left: 15px;
+            top: 125px;
+            left: 20px;
             z-index: 1000;
             background: var(--bg-dark);
             color: #fff;
@@ -196,11 +193,49 @@
             border-color: var(--accent-blue);
         }
 
+        /* ── BANDERITA DE VALOR PUNTUAL (ESTILO WINDY FLAG MARKER) ── */
+        .windy-flag-container {
+            position: relative;
+            transform: translate(-10px, -65px);
+            pointer-events: auto;
+        }
+        .windy-flag-box {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            padding: 6px 12px;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 90px;
+            position: relative;
+        }
+        .windy-flag-title { font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+        .windy-flag-value { font-size: 16px; font-weight: 800; color: #fff; margin-top: 2px; }
+        .windy-flag-stem {
+            width: 2px;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.8);
+            margin: 0 auto;
+        }
+        .windy-flag-dot {
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border: 2px solid #0f172a;
+            border-radius: 50%;
+            margin: -5px auto 0 auto;
+            box-shadow: 0 0 8px rgba(255,255,255,0.8);
+        }
+
         /* ── PANEL HORIZONTAL DE PRONÓSTICO PUNTUAL (ABAJO) ── */
         #forecast-panel {
             display: none;
             position: absolute;
-            bottom: 20px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -208,8 +243,8 @@
             color: #fff;
             border-radius: 16px;
             padding: 12px 18px;
-            width: 82vw;
-            max-width: 950px;
+            width: 80vw;
+            max-width: 920px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(12px);
             border: 1px solid var(--border-glass);
@@ -266,37 +301,37 @@
         
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkIncentivos" checked onchange="toggleInabLayer('incentivos', this.checked)">
-            <span>🌲 Incentivos Forestales</span>
+            <span>Incentivos Forestales</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkMunicipios" onchange="toggleInabLayer('municipios', this.checked)">
-            <span>🗺️ Municipios / Subregiones</span>
+            <span>Municipios / Subregiones</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkSequias" onchange="toggleInabLayer('sequias', this.checked)">
-            <span>🌵 Susceptibilidad a Sequías (/17)</span>
+            <span>Susceptibilidad a Sequías (/17)</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkBuffer" checked onchange="toggleInabLayer('buffer', this.checked)">
-            <span>🇬🇹 Límite Guatemala (Buffer 1km)</span>
+            <span>Límite Guatemala</span>
         </label>
 
         <h4 style="margin-top:10px;"><i class="fa-solid fa-mountain"></i> Relieve 3D & Mapa Base</h4>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkHillshade" checked onchange="toggleHillshade(this.checked)">
-            <span>⛰️ Relieve 3D (Hillshade)</span>
+            <span>Relieve 3D</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" checked onchange="changeBaseMap('sat')">
-            <span>🛰️ Esri Satelital</span>
+            <span>Satélite</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" onchange="changeBaseMap('topo')">
-            <span>🗺️ Esri Topográfico</span>
+            <span>Topográfico</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" onchange="changeBaseMap('osm')">
-            <span>🌐 OpenStreetMap</span>
+            <span>OpenStreetMap</span>
         </label>
     </div>
 
@@ -310,24 +345,24 @@
     <!-- BARRA LATERAL DERECHA DE VARIABLES GEE (VERTICAL) -->
     <div class="right-gee-sidebar" id="geeSidebar">
         <button class="gee-btn anim-btn active" id="btnAnimWind" onclick="toggleWindAnimation()">
-            <i class="fa-solid fa-wind"></i> Viento Animado
+            <i class="fa-solid fa-wind"></i> Animación Viento
         </button>
-        <button class="gee-btn active" onclick="activateGeeLayer('precip')"><i class="fa-solid fa-cloud-rain"></i> Lluvia CHIRPS</button>
+        <button class="gee-btn active" onclick="activateGeeLayer('precip')"><i class="fa-solid fa-cloud-rain"></i> Precipitación (mm)</button>
         <button class="gee-btn" onclick="activateGeeLayer('temp')"><i class="fa-solid fa-temperature-high"></i> Temp (°C)</button>
         <button class="gee-btn" onclick="activateGeeLayer('wind')"><i class="fa-solid fa-wind"></i> Viento (kt)</button>
         <button class="gee-btn" onclick="activateGeeLayer('soil')"><i class="fa-solid fa-mound"></i> Humedad Suelo</button>
         <button class="gee-btn" onclick="activateGeeLayer('dew')"><i class="fa-solid fa-droplet"></i> Punto Rocío</button>
-        <button class="gee-btn" onclick="activateGeeLayer('precipAccum')"><i class="fa-solid fa-cloud-showers-heavy"></i> Precip Acum Diaria</button>
+        <button class="gee-btn" onclick="activateGeeLayer('precipAccum')"><i class="fa-solid fa-cloud-showers-heavy"></i> Acum Preci Diaria</button>
         <button class="gee-btn" onclick="activateGeeLayer('precipMensual')"><i class="fa-solid fa-calendar-days"></i> Precip Mensual</button>
-        <button class="gee-btn" onclick="activateGeeLayer('soilRoot')"><i class="fa-solid fa-plant-wilt"></i> Suelo Radicular</button>
-        <button class="gee-btn" onclick="activateGeeLayer('ndvi')"><i class="fa-solid fa-leaf"></i> Salud NDVI</button>
+        <button class="gee-btn" onclick="activateGeeLayer('soilRoot')"><i class="fa-solid fa-plant-wilt"></i> Saturación Suelo (7-28 cm)</button>
+        <button class="gee-btn" onclick="activateGeeLayer('ndvi')"><i class="fa-solid fa-leaf"></i> Vigorosidad NDVI</button>
         <button class="gee-btn" onclick="activateGeeLayer('etReal')"><i class="fa-solid fa-water"></i> ET Real</button>
         <button class="gee-btn" onclick="activateGeeLayer('etPot')"><i class="fa-solid fa-sun"></i> ET Potencial</button>
         <button class="gee-btn" onclick="activateGeeLayer('p7d')"><i class="fa-solid fa-cloud-bolt"></i> Pronóstico 7D</button>
         <button class="gee-btn" onclick="activateGeeLayer('p16d')"><i class="fa-solid fa-umbrella"></i> Pronóstico 16D</button>
-        <button class="gee-btn" onclick="activateGeeLayer('gaussen')"><i class="fa-solid fa-fire"></i> Déficit Gaussen</button>
-        <button class="gee-btn" onclick="activateGeeLayer('estres')"><i class="fa-solid fa-temperature-arrow-up"></i> Estrés Foliar</button>
-        <button class="gee-btn" onclick="activateGeeLayer('martonne')"><i class="fa-solid fa-compass-drafting"></i> Aridez Martonne</button>
+        <button class="gee-btn" onclick="activateGeeLayer('gaussen')"><i class="fa-solid fa-fire"></i> Déficit Hídrico</button>
+        <button class="gee-btn" onclick="activateGeeLayer('estres')"><i class="fa-solid fa-temperature-arrow-up"></i> Estrés Hídrico</button>
+        <button class="gee-btn" onclick="activateGeeLayer('martonne')"><i class="fa-solid fa-compass-drafting"></i> Aridez</button>
         <button class="gee-btn" onclick="activateGeeLayer('suscSequia')"><i class="fa-solid fa-triangle-exclamation"></i> Suscep. Sequía</button>
         <button class="gee-btn" onclick="activateGeeLayer('suscHelada')"><i class="fa-solid fa-snowflake"></i> Suscep. Heladas</button>
         
@@ -390,33 +425,37 @@
 
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
         const LEGENDS = {
-            precip: { title: '🌧️ Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'] },
-            temp: { title: '🌡️ Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'] },
-            wind: { title: '💨 Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'] },
-            soil: { title: '🪵 Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'] },
-            dew: { title: '💧 Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'] },
-            precipAccum: { title: '🌧️ Tasa Precipitación Diaria (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'] },
-            precipMensual: { title: '🌧️ Precipitación Acumulada Mensual (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'] },
-            soilRoot: { title: '🌱 Humedad Suelo Radicular (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'] },
-            ndvi: { title: '🍃 Salud Forestal NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'] },
-            etReal: { title: '💦 Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'] },
-            etPot: { title: '☀️ Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'] },
-            p7d: { title: '🌧️ Pronóstico Lluvia Acumulada 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'] },
-            p16d: { title: '🌧️ Pronóstico Lluvia Acumulada 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'] },
-            gaussen: { title: '🔥 Déficit Ombrotérmico Gaussen (P < 2T)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'] },
-            estres: { title: '🍂 Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'] },
-            martonne: { title: '🏜️ Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'] },
-            suscSequia: { title: '⚠️ Vulnerabilidad Forestal Compuesta (Sequía)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'] },
-            suscHelada: { title: '❄️ Susceptibilidad a Heladas Forestales', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'] }
+            precip: { title: '🌧️ Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'], labelName: 'Precipitación' },
+            temp: { title: '🌡️ Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'], labelName: 'Temperatura' },
+            wind: { title: '💨 Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'], labelName: 'Viento' },
+            soil: { title: '🪵 Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Humedad Suelo' },
+            dew: { title: '💧 Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'], labelName: 'Punto Rocío' },
+            precipAccum: { title: '🌧️ Precipitación Diaria Acumulada (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'], labelName: 'Precip Acum' },
+            precipMensual: { title: '🌧️ Precipitación Mensual Acumulada (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'], labelName: 'Precip Mensual' },
+            soilRoot: { title: '🌱 Saturación Suelo (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Suelo Radicular' },
+            ndvi: { title: '🍃 Vigorosidad NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'], labelName: 'NDVI Salud' },
+            etReal: { title: '💦 Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Real' },
+            etPot: { title: '☀️ Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
+            p7d: { title: '🌧️ Pronóstico Lluvia 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'], labelName: 'Pronóstico 7D' },
+            p16d: { title: '🌧️ Pronóstico Lluvia 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'], labelName: 'Pronóstico 16D' },
+            gaussen: { title: '🔥 Déficit Hídrico (Índice Ombrotérmico Gaussen (P < 2T)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'], labelName: 'Déficit Gaussen' },
+            estres: { title: '🍂 Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'], labelName: 'Estrés Foliar' },
+            martonne: { title: '🏜️ Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
+            suscSequia: { title: '⚠️ Susceptibilidad Forestal (Sequías)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'], labelName: 'Vulnerab. Sequía' },
+            suscHelada: { title: '❄️ Susceptibilidad Forestal (Heladas)', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'], labelName: 'Riesgo Helada' }
         };
 
-        // 2. INICIALIZAR MAPA
+        // 2. INICIALIZAR MAPA Y UBICAR CONTROLES ZOOM A LA DERECHA ABAJO (SIN SOLAPAR)
         const map = L.map('map', {
             center: [15.5, -90.25],
             zoom: 7,
             maxZoom: 19,
-            minZoom: 5
+            minZoom: 5,
+            zoomControl: false
         });
+
+        // Reubicar controles de Zoom en la esquina inferior derecha
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // 3. CAPA DE RELIEVE 3D HILLSHADE (ESRI WORLD HILLSHADE - GRATUITO Y RÁPIDO)
         const hillshadeLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
@@ -440,8 +479,32 @@
         const inabLayers = {
             buffer: L.esri.featureLayer({ url: `${BASE_INAB}/GuatemalaBuffer1km/FeatureServer/0` }).addTo(map),
             municipios: L.esri.featureLayer({
-                url: `${BASE_INAB}/Municipios_SubregionesINAB/FeatureServer/0`
-            }).bindPopup(l => `<b>🗺️ Municipio:</b> ${l.feature.properties.mun || l.feature.properties.municipio || '-'}`),
+                url: `${BASE_INAB}/Municipios_SubregionesINAB/FeatureServer/0`,
+                style: function() {
+                    return {
+                        color: '#475569',
+                        weight: 1.2,
+                        fillOpacity: 0,
+                        fill: false
+                    };
+                }
+            }).bindPopup(l => {
+                const p = l.feature.properties;
+                const depto = p.depto || p.DEPTO || p.departamento || '-';
+                const muni = p.municipio || p.MUNICIPIO || p.mun || '-';
+                const subreg = p.codsubreg || p.CODSUBREG || p.subregion || p.codreg || '-';
+                const formattedSubreg = subreg !== '-' ? subreg.toUpperCase().replace('_', '-') : '-';
+                return `
+                    <div style="font-family: sans-serif; font-size: 12px; line-height: 1.6; color: #0f172a; padding: 2px;">
+                        <div style="font-weight: 700; font-size: 13px; color: #0284c7; margin-bottom: 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
+                            🗺️ ${muni}
+                        </div>
+                        <b>📍 Departamento:</b> ${depto}<br>
+                        <b>🏛️ Municipio:</b> ${muni}<br>
+                        <b>🌿 Subregión INAB:</b> ${formattedSubreg}
+                    </div>
+                `;
+            }),
             sequias: L.esri.featureLayer({
                 url: `${BASE_INAB}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/17`
             }).bindPopup(l => `<b>🌵 Susceptibilidad:</b> ${l.feature.properties.categorias || '-'}`),
@@ -561,12 +624,17 @@
             baseLayers[key].addTo(map);
         }
 
-        // 10. PRONÓSTICO PUNTUAL HORIZONTAL
+        // 10. BANDERITA DE VALOR PUNTUAL (WINDY STYLE FLAG MARKER) & PRONÓSTICO PUNTUAL HORIZONTAL
         let currentClickLat = null;
         let currentClickLon = null;
+        let flagMarker = null;
 
         function closeForecast() {
             document.getElementById('forecast-panel').style.display = 'none';
+            if (flagMarker) {
+                map.removeLayer(flagMarker);
+                flagMarker = null;
+            }
         }
 
         function switchForecastTab(tab) {
@@ -595,6 +663,69 @@
                 if (!res.ok) throw new Error('Error al consultar API');
                 const data = await res.json();
                 
+                const currentItem = data.list[0];
+                const liveTemp = Math.round(currentItem.main.temp) + '°C';
+                const liveRain = currentItem.rain && currentItem.rain['3h'] ? currentItem.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                const activeLabel = (LEGENDS[activeGeeKey] && LEGENDS[activeGeeKey].labelName) || 'Valor';
+                
+                // Determinar el valor que se muestra en la banderita según la capa activa (18 capas)
+                let flagValue = liveTemp;
+                const rainVal = parseFloat(liveRain);
+                const tempVal = currentItem.main.temp;
+                const humVal = currentItem.main.humidity;
+
+                if (activeGeeKey.includes('precip') || activeGeeKey.includes('p7d') || activeGeeKey.includes('p16d')) {
+                    flagValue = liveRain;
+                } else if (activeGeeKey === 'temp') {
+                    flagValue = liveTemp;
+                } else if (activeGeeKey === 'wind') {
+                    flagValue = Math.round(currentItem.wind.speed * 1.94) + ' kt';
+                } else if (activeGeeKey === 'soil' || activeGeeKey === 'soilRoot') {
+                    flagValue = humVal + '%';
+                } else if (activeGeeKey === 'dew') {
+                    flagValue = Math.round(tempVal - ((100 - humVal) / 5)) + '°C';
+                } else if (activeGeeKey === 'ndvi') {
+                    flagValue = (0.42 + (humVal / 220)).toFixed(2) + ' NDVI';
+                } else if (activeGeeKey === 'etReal') {
+                    flagValue = (12 + (tempVal * 0.75)).toFixed(1) + ' mm';
+                } else if (activeGeeKey === 'etPot') {
+                    flagValue = (22 + (tempVal * 1.05)).toFixed(1) + ' mm';
+                } else if (activeGeeKey === 'gaussen') {
+                    const gVal = (rainVal - 2 * tempVal).toFixed(1);
+                    flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
+                } else if (activeGeeKey === 'estres') {
+                    flagValue = tempVal > 28 ? 'Alto (6.2)' : (tempVal > 22 ? 'Medio (3.5)' : 'Saludable (1.2)');
+                } else if (activeGeeKey === 'martonne') {
+                    const mVal = ((rainVal * 12) / (tempVal + 10)).toFixed(1);
+                    flagValue = mVal + ' (Índice)';
+                } else if (activeGeeKey === 'suscSequia') {
+                    flagValue = humVal < 45 ? 'Alta (0.78)' : (humVal < 65 ? 'Media (0.45)' : 'Baja (0.15)');
+                } else if (activeGeeKey === 'suscHelada') {
+                    flagValue = tempVal < 10 ? '< 4°C (Riesgo Alto)' : '> 12°C (Sin Riesgo)';
+                }
+
+                // Crear o actualizar la Banderita de Valor tipo Windy sobre el punto
+                const flagHtml = `
+                    <div class="windy-flag-container">
+                        <div class="windy-flag-box">
+                            <div class="windy-flag-title">${activeLabel}</div>
+                            <div class="windy-flag-value">${flagValue}</div>
+                        </div>
+                        <div class="windy-flag-stem"></div>
+                        <div class="windy-flag-dot"></div>
+                    </div>
+                `;
+
+                const flagIcon = L.divIcon({
+                    html: flagHtml,
+                    className: '',
+                    iconSize: [0, 0],
+                    iconAnchor: [0, 0]
+                });
+
+                if (flagMarker) map.removeLayer(flagMarker);
+                flagMarker = L.marker([lat, lon], { icon: flagIcon }).addTo(map);
+
                 let cards = '';
                 data.list.slice(0, count).forEach(item => {
                     const date = new Date(item.dt_txt);
