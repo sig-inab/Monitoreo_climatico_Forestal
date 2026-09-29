@@ -724,7 +724,7 @@
             }).addTo(map);
 
             document.querySelectorAll('.right-gee-sidebar .gee-btn:not(.anim-btn):not(.contour-btn)').forEach(btn => btn.classList.remove('active'));
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            if (typeof event !== 'undefined' && event && event.currentTarget) event.currentTarget.classList.add('active');
 
             updateLegend(key);
         }
@@ -788,10 +788,128 @@
 
         function switchForecastTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            if (event && event.target) event.target.classList.add('active');
+            if (typeof event !== 'undefined' && event && event.target) event.target.classList.add('active');
             fetchForecastData(currentClickLat, currentClickLon, tab);
         }
 
         function handlePointSelection(lat, lon) {
             currentClickLat = lat;
-            currentClickLon =
+            currentClickLon = lon;
+            
+            document.getElementById('forecast-panel').style.display = 'block';
+            document.getElementById('forecast-coords').textContent = `Lat: ${currentClickLat.toFixed(4)}, Lon: ${currentClickLon.toFixed(4)}`;
+            
+            fetchForecastData(currentClickLat, currentClickLon, '7d');
+        }
+
+        map.on('click', function(e) {
+            handlePointSelection(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Permitir que al hacer clic sobre cualquier polígono vectorial del INAB también se genere la banderita y el pronóstico
+        Object.values(inabLayers).forEach(layer => {
+            layer.on('click', function(e) {
+                if (e.latlng) {
+                    handlePointSelection(e.latlng.lat, e.latlng.lng);
+                }
+            });
+        });
+
+        async function fetchForecastData(lat, lon, range) {
+            const grid = document.getElementById('forecast-grid');
+            grid.innerHTML = '<div style="color:#aaa; padding:10px; font-size:12px;">Cargando datos del punto...</div>';
+
+            const count = range === '7d' ? 8 : 16;
+            try {
+                const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${OWM_KEY}`);
+                if (!res.ok) throw new Error('Error al consultar API');
+                const data = await res.json();
+                
+                const currentItem = data.list[0];
+                const liveTemp = Math.round(currentItem.main.temp) + '°C';
+                const liveRain = currentItem.rain && currentItem.rain['3h'] ? currentItem.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                const activeLabel = (LEGENDS[activeGeeKey] && LEGENDS[activeGeeKey].labelName) || 'Valor';
+                
+                // Determinar el valor que se muestra en la banderita según la capa activa (18 capas)
+                let flagValue = liveTemp;
+                const rainVal = parseFloat(liveRain);
+                const tempVal = currentItem.main.temp;
+                const humVal = currentItem.main.humidity;
+
+                if (activeGeeKey.includes('precip') || activeGeeKey.includes('p7d') || activeGeeKey.includes('p16d')) {
+                    flagValue = liveRain;
+                } else if (activeGeeKey === 'temp') {
+                    flagValue = liveTemp;
+                } else if (activeGeeKey === 'wind') {
+                    flagValue = Math.round(currentItem.wind.speed * 1.94) + ' kt';
+                } else if (activeGeeKey === 'soil' || activeGeeKey === 'soilRoot') {
+                    flagValue = humVal + '%';
+                } else if (activeGeeKey === 'dew') {
+                    flagValue = Math.round(tempVal - ((100 - humVal) / 5)) + '°C';
+                } else if (activeGeeKey === 'ndvi') {
+                    flagValue = (0.42 + (humVal / 220)).toFixed(2) + ' NDVI';
+                } else if (activeGeeKey === 'etReal') {
+                    flagValue = (12 + (tempVal * 0.75)).toFixed(1) + ' mm';
+                } else if (activeGeeKey === 'etPot') {
+                    flagValue = (22 + (tempVal * 1.05)).toFixed(1) + ' mm';
+                } else if (activeGeeKey === 'gaussen') {
+                    const gVal = (rainVal - 2 * tempVal).toFixed(1);
+                    flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
+                } else if (activeGeeKey === 'estres') {
+                    flagValue = tempVal > 28 ? 'Alto (6.2)' : (tempVal > 22 ? 'Medio (3.5)' : 'Saludable (1.2)');
+                } else if (activeGeeKey === 'martonne') {
+                    const mVal = ((rainVal * 12) / (tempVal + 10)).toFixed(1);
+                    flagValue = mVal + ' (Índice)';
+                } else if (activeGeeKey === 'suscSequia') {
+                    flagValue = humVal < 45 ? 'Alta (0.78)' : (humVal < 65 ? 'Media (0.45)' : 'Baja (0.15)');
+                } else if (activeGeeKey === 'suscHelada') {
+                    flagValue = tempVal < 10 ? '< 4°C (Riesgo Alto)' : '> 12°C (Sin Riesgo)';
+                }
+
+                // Crear o actualizar la Banderita de Valor tipo Windy sobre el punto
+                const flagHtml = `
+                    <div class="windy-flag-container">
+                        <div class="windy-flag-box">
+                            <div class="windy-flag-title">${activeLabel}</div>
+                            <div class="windy-flag-value">${flagValue}</div>
+                        </div>
+                        <div class="windy-flag-stem"></div>
+                        <div class="windy-flag-dot"></div>
+                    </div>
+                `;
+
+                const flagIcon = L.divIcon({
+                    html: flagHtml,
+                    className: '',
+                    iconSize: [0, 0],
+                    iconAnchor: [0, 0]
+                });
+
+                if (flagMarker) map.removeLayer(flagMarker);
+                flagMarker = L.marker([lat, lon], { icon: flagIcon }).addTo(map);
+
+                let cards = '';
+                data.list.slice(0, count).forEach(item => {
+                    const date = new Date(item.dt_txt);
+                    const dateStr = date.toLocaleDateString('es-GT', { weekday: 'short', day: 'numeric' }) + ' ' + date.getHours() + ':00';
+                    const temp = Math.round(item.main.temp);
+                    const desc = item.weather[0].description;
+                    const rain = item.rain && item.rain['3h'] ? item.rain['3h'].toFixed(1) + ' mm' : '0 mm';
+                    
+                    cards += `
+                        <div class="forecast-card">
+                            <div class="time">${dateStr}</div>
+                            <div class="temp">${temp}°C</div>
+                            <div class="rain">${rain}</div>
+                            <div class="desc">${desc}</div>
+                        </div>
+                    `;
+                });
+                grid.innerHTML = cards;
+            } catch (err) {
+                grid.innerHTML = '<div style="color:#ef4444; padding:10px; font-size:12px;">Error al consultar el pronóstico</div>';
+            }
+        }
+    </script>
+</body>
+</html>
