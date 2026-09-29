@@ -286,7 +286,39 @@
         .forecast-card .time { font-size: 10px; color: #94a3b8; font-weight: 600; }
         .forecast-card .temp { font-size: 14px; font-weight: 700; color: #f97316; }
         .forecast-card .rain { font-size: 11px; color: #38bdf8; font-weight: 600; }
-        .forecast-card .desc { font-size: 10px; color: #cbd5e1; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* ── ESTILOS DE POPUPS VECTORIALES SCROLLABLES Y ELEGANTES ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-dark);
+            color: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            backdrop-filter: blur(12px);
+        }
+        .leaflet-popup-tip {
+            background: var(--bg-dark);
+        }
+        .leaflet-popup-content {
+            margin: 10px 12px;
+            max-height: 190px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+        .popup-info-box {
+            font-size: 11px;
+            line-height: 1.6;
+            color: #f8fafc;
+        }
+        .popup-title {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            padding-bottom: 4px;
+        }
     </style>
 </head>
 <body>
@@ -308,8 +340,12 @@
             <span>Municipios / Subregiones</span>
         </label>
         <label class="drawer-checkbox-item">
-            <input type="checkbox" id="chkSequias" onchange="toggleInabLayer('sequias', this.checked)">
-            <span>Susceptibilidad a Sequías (/17)</span>
+            <input type="checkbox" id="chkEcosistemas" onchange="toggleInabLayer('ecosistemas', this.checked)">
+            <span>Tipos de Ecosistemas</span>
+        </label>
+        <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkRepoblacion" onchange="toggleInabLayer('repoblacion', this.checked)">
+            <span>Obligaciones de Repoblación</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkBuffer" checked onchange="toggleInabLayer('buffer', this.checked)">
@@ -438,9 +474,9 @@
             etPot: { title: 'Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
             p7d: { title: 'Pronóstico Lluvia 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'], labelName: 'Pronóstico 7D' },
             p16d: { title: 'Pronóstico Lluvia 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'], labelName: 'Pronóstico 16D' },
-            gaussen: { title: 'Déficit Hídrico (Índice Ombrotérmico Gaussen)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'], labelName: 'Déficit Gaussen' },
+            gaussen: { title: 'Déficit Hídrico (Índice Ombrotérmico Gaussen)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Excedente Hídrico (+20)'], labelName: 'Déficit Gaussen' },
             estres: { title: 'Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'], labelName: 'Estrés Foliar' },
-            martonne: { title: 'Índice de Aridez de Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
+            martonne: { title: 'Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
             suscSequia: { title: 'Susceptibilidad Forestal (Sequías)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'], labelName: 'Vulnerab. Sequía' },
             suscHelada: { title: 'Susceptibilidad Forestal (Heladas)', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'], labelName: 'Riesgo Helada' }
         };
@@ -495,22 +531,65 @@
                 const subreg = p.codsubreg || p.CODSUBREG || p.subregion || p.codreg || '-';
                 const formattedSubreg = subreg !== '-' ? subreg.toUpperCase().replace('_', '-') : '-';
                 return `
-                    <div style="font-family: sans-serif; font-size: 12px; line-height: 1.6; color: #0f172a; padding: 2px;">
-                        <div style="font-weight: 700; font-size: 13px; color: #0284c7; margin-bottom: 6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">
-                            🗺️ ${muni}
-                        </div>
+                    <div class="popup-info-box">
+                        <div class="popup-title">🗺️ ${muni}</div>
                         <b>📍 Departamento:</b> ${depto}<br>
                         <b>🏛️ Municipio:</b> ${muni}<br>
                         <b>🌿 Subregión INAB:</b> ${formattedSubreg}
                     </div>
                 `;
             }),
-            sequias: L.esri.featureLayer({
-                url: `${BASE_INAB}/Susceptibilidad_a_sequ%C3%ADas/FeatureServer/17`
-            }).bindPopup(l => `<b>🌵 Susceptibilidad:</b> ${l.feature.properties.categorias || '-'}`),
             incentivos: L.esri.featureLayer({
-                url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`
-            }).bindPopup(l => `<b>🌲 Incentivo Forestal</b><br>Programa: ${l.feature.properties.programa || '-'}<br>Recarga: ${l.feature.properties.recarga_hidrica || '-'}`).addTo(map)
+                url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`,
+                style: function() {
+                    return { color: '#22c55e', weight: 1.5, fillColor: '#22c55e', fillOpacity: 0.35 };
+                }
+            }).bindPopup(l => {
+                const p = l.feature.properties;
+                return `
+                    <div class="popup-info-box">
+                        <div class="popup-title">🌲 Incentivo Forestal</div>
+                        <b>Programa:</b> ${p.programa || '-'}<br>
+                        <b>Expediente:</b> ${p.expediente || '-'}<br>
+                        <b>Modalidad:</b> ${p.modalidad || '-'}<br>
+                        <b>Tipo Proyecto:</b> ${p.tipoproyec || '-'}<br>
+                        <b>Estado Proyecto:</b> ${p.estado_proyecto || '-'}<br>
+                        <b>Especies:</b> ${p.especies_concat || '-'}
+                    </div>
+                `;
+            }).addTo(map),
+            ecosistemas: L.esri.featureLayer({
+                url: `${BASE_INAB}/TipoEcosistemasGuatemala_Geo/FeatureServer/1`,
+                style: function() {
+                    return { color: '#10b981', weight: 1, fillColor: '#34d399', fillOpacity: 0.25 };
+                }
+            }).bindPopup(l => {
+                const p = l.feature.properties;
+                return `
+                    <div class="popup-info-box">
+                        <div class="popup-title">🌳 Ecosistema</div>
+                        <b>Tipo Ecosistema:</b> ${p.tipoecosistema || '-'}
+                    </div>
+                `;
+            }),
+            repoblacion: L.esri.featureLayer({
+                url: `${BASE_INAB}/Obligaciones_de_Repoblaci%C3%B3n_Forestal/FeatureServer/1`,
+                style: function() {
+                    return { color: '#f59e0b', weight: 1.5, fillColor: '#fbbf24', fillOpacity: 0.35 };
+                }
+            }).bindPopup(l => {
+                const p = l.feature.properties;
+                const areaStr = p.area_obligacion ? parseFloat(p.area_obligacion).toFixed(2) + ' ha' : '-';
+                return `
+                    <div class="popup-info-box">
+                        <div class="popup-title">📜 Repoblación Forestal</div>
+                        <b>Expediente:</b> ${p.codigo_expediente || '-'}<br>
+                        <b>Estado:</b> ${p.estado || '-'}<br>
+                        <b>Tipo Obligación:</b> ${p.tipo_obligacion || '-'}<br>
+                        <b>Área Obligación:</b> ${areaStr}
+                    </div>
+                `;
+            })
         };
 
         // 6. ANIMACIÓN GLOBAL Y LIGERA DE VIENTO (ESTILO WINDY PLANETARIO)
@@ -643,14 +722,27 @@
             fetchForecastData(currentClickLat, currentClickLon, tab);
         }
 
-        map.on('click', function(e) {
-            currentClickLat = e.latlng.lat;
-            currentClickLon = e.latlng.lng;
+        function handlePointSelection(lat, lon) {
+            currentClickLat = lat;
+            currentClickLon = lon;
             
             document.getElementById('forecast-panel').style.display = 'block';
             document.getElementById('forecast-coords').textContent = `Lat: ${currentClickLat.toFixed(4)}, Lon: ${currentClickLon.toFixed(4)}`;
             
             fetchForecastData(currentClickLat, currentClickLon, '7d');
+        }
+
+        map.on('click', function(e) {
+            handlePointSelection(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Permitir que al hacer clic sobre cualquier polígono vectorial del INAB también se genere la banderita y el pronóstico
+        Object.values(inabLayers).forEach(layer => {
+            layer.on('click', function(e) {
+                if (e.latlng) {
+                    handlePointSelection(e.latlng.lat, e.latlng.lng);
+                }
+            });
         });
 
         async function fetchForecastData(lat, lon, range) {
