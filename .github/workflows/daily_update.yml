@@ -1,0 +1,42 @@
+name: Actualización Automática Diaria - Monitoreo Climático INAB
+
+on:
+  schedule:
+    # Se ejecuta 2 veces al día: 03:00 AM y 03:00 PM hora de Guatemala (09:00 y 21:00 UTC)
+    - cron: '0 9,21 * * *'
+  workflow_dispatch: # Permite ejecución manual desde el botón "Run workflow" en GitHub
+
+jobs:
+  update-gee-tiles:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Dependencias (earthengine-api, requests)
+        run: |
+          python -m pip install --upgrade pip
+          pip install earthengine-api requests
+
+      - name: Ejecutar Script de Actualización GEE
+        env:
+          GEE_SERVICE_ACCOUNT_KEY: ${{ secrets.GEE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          python scripts/update_daily_gee.py
+
+      - name: Guardar y Publicar Cambios en GitHub Pages
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git status
+          git diff-index --quiet HEAD || git commit -m "Auto-actualización diaria de capas climáticas GEE [skip ci]"
+          git push origin main
