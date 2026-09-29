@@ -33,9 +33,9 @@
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #0f172a; }
         #map { width: 100vw; height: 100vh; background: #1e293b; }
 
-        /* Efecto de Mezcla para Relieve Hillshade */
+        /* Capa GEE Climática Opacidad y Color Vivo */
         .gee-tile-layer {
-            mix-blend-mode: multiply;
+            opacity: 0.88;
         }
 
         /* ── MENÚ HAMBURGUESA (CAPAS INAB) ── */
@@ -323,7 +323,7 @@
         </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" checked onchange="changeBaseMap('sat')">
-            <span>Satélite</span>
+            <span>Satelital</span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="radio" name="baseRadio" onchange="changeBaseMap('topo')">
@@ -337,7 +337,7 @@
 
     <!-- BARRA DE LEYENDA FLOTANTE (SUPERIOR CENTRO) -->
     <div class="legend-bar-container" id="legendContainer">
-        <div class="legend-title" id="legendTitle">🌧️ Precipitación Diaria CHIRPS (mm)</div>
+        <div class="legend-title" id="legendTitle">Precipitación Diaria CHIRPS (mm)</div>
         <div class="legend-gradient-bar" id="legendGradient"></div>
         <div class="legend-ticks" id="legendTicks"></div>
     </div>
@@ -345,7 +345,7 @@
     <!-- BARRA LATERAL DERECHA DE VARIABLES GEE (VERTICAL) -->
     <div class="right-gee-sidebar" id="geeSidebar">
         <button class="gee-btn anim-btn active" id="btnAnimWind" onclick="toggleWindAnimation()">
-            <i class="fa-solid fa-wind"></i> Animación Viento
+            <i class="fa-solid fa-wind"></i> Viento Animado
         </button>
         <button class="gee-btn active" onclick="activateGeeLayer('precip')"><i class="fa-solid fa-cloud-rain"></i> Precipitación (mm)</button>
         <button class="gee-btn" onclick="activateGeeLayer('temp')"><i class="fa-solid fa-temperature-high"></i> Temp (°C)</button>
@@ -425,24 +425,24 @@
 
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
         const LEGENDS = {
-            precip: { title: '🌧️ Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'], labelName: 'Precipitación' },
-            temp: { title: '🌡️ Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'], labelName: 'Temperatura' },
-            wind: { title: '💨 Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'], labelName: 'Viento' },
-            soil: { title: '🪵 Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Humedad Suelo' },
-            dew: { title: '💧 Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'], labelName: 'Punto Rocío' },
-            precipAccum: { title: '🌧️ Precipitación Diaria Acumulada (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'], labelName: 'Precip Acum' },
-            precipMensual: { title: '🌧️ Precipitación Mensual Acumulada (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'], labelName: 'Precip Mensual' },
-            soilRoot: { title: '🌱 Saturación Suelo (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Suelo Radicular' },
-            ndvi: { title: '🍃 Vigorosidad NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'], labelName: 'NDVI Salud' },
-            etReal: { title: '💦 Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Real' },
-            etPot: { title: '☀️ Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
-            p7d: { title: '🌧️ Pronóstico Lluvia 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'], labelName: 'Pronóstico 7D' },
-            p16d: { title: '🌧️ Pronóstico Lluvia 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'], labelName: 'Pronóstico 16D' },
-            gaussen: { title: '🔥 Déficit Hídrico (Índice Ombrotérmico Gaussen (P < 2T)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'], labelName: 'Déficit Gaussen' },
-            estres: { title: '🍂 Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'], labelName: 'Estrés Foliar' },
-            martonne: { title: '🏜️ Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
-            suscSequia: { title: '⚠️ Susceptibilidad Forestal (Sequías)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'], labelName: 'Vulnerab. Sequía' },
-            suscHelada: { title: '❄️ Susceptibilidad Forestal (Heladas)', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'], labelName: 'Riesgo Helada' }
+            precip: { title: 'Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'], labelName: 'Precipitación' },
+            temp: { title: 'Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'], labelName: 'Temperatura' },
+            wind: { title: 'Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'], labelName: 'Viento' },
+            soil: { title: 'Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Humedad Suelo' },
+            dew: { title: 'Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'], labelName: 'Punto Rocío' },
+            precipAccum: { title: 'Precipitación Diaria Acumulada (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'], labelName: 'Precip Acum' },
+            precipMensual: { title: 'Precipitación Mensual Acumulada (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'], labelName: 'Precip Mensual' },
+            soilRoot: { title: 'Saturación Suelo (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Suelo Radicular' },
+            ndvi: { title: 'Vigorosidad NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'], labelName: 'NDVI Salud' },
+            etReal: { title: 'Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Real' },
+            etPot: { title: 'Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
+            p7d: { title: 'Pronóstico Lluvia 7 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '25', '50', '100', '150+ mm'], labelName: 'Pronóstico 7D' },
+            p16d: { title: 'Pronóstico Lluvia 16 Días (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '50', '100', '200', '300+ mm'], labelName: 'Pronóstico 16D' },
+            gaussen: { title: 'Déficit Hídrico (Índice Ombrotérmico Gaussen)', gradient: 'linear-gradient(to right, #7f0000, #d73027, #f46d43, #fee08b, #e0f3f8, #67a9cf, #023858)', ticks: ['Déficit (-40)', 'Equilibrio (0)', 'Superávit (+20)'], labelName: 'Déficit Gaussen' },
+            estres: { title: 'Estrés Hídrico Foliar', gradient: 'linear-gradient(to right, #1a9850, #91cf60, #d9ef8b, #fee08b, #fc8d59, #d73027, #7f0000)', ticks: ['Saludable (0)', 'Estrés Medio', 'Estrés Severo (8)'], labelName: 'Estrés Foliar' },
+            martonne: { title: 'Índice de Aridez de De Martonne', gradient: 'linear-gradient(to right, #d7191c, #fdae61, #ffffbf, #abd9e9, #2c7bb6)', ticks: ['Árido (<10)', 'Semiárido', 'Subhúmedo', 'Húmedo (>30)'], labelName: 'Aridez Martonne' },
+            suscSequia: { title: 'Susceptibilidad Forestal (Sequías)', gradient: 'linear-gradient(to right, #006837, #31a354, #78c679, #addd8e, #d9ef8b, #fee08b, #fdae61, #f46d43, #d73027, #a50026)', ticks: ['Baja (0.1)', 'Media (0.4)', 'Alta (0.8)'], labelName: 'Vulnerab. Sequía' },
+            suscHelada: { title: 'Susceptibilidad Forestal (Heladas)', gradient: 'linear-gradient(to right, #1f6888, #388385, #529688, #80a599, #d4c4b0, #b57448, #a0562e)', ticks: ['< 0° (Severa)', '4° (Moderada)', '> 12° (Sin riesgo)'], labelName: 'Riesgo Helada' }
         };
 
         // 2. INICIALIZAR MAPA Y UBICAR CONTROLES ZOOM A LA DERECHA ABAJO (SIN SOLAPAR)
@@ -573,7 +573,7 @@
             
             activeGeeKey = key;
             currentGeeLayer = L.tileLayer(GEE_URLS[key], { 
-                opacity: 0.78, 
+                opacity: 0.88, 
                 maxZoom: 19,
                 className: 'gee-tile-layer'
             }).addTo(map);
