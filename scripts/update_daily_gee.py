@@ -37,8 +37,15 @@ modis_et = ee.ImageCollection("MODIS/061/MOD16A2")
 worldcover = ee.Image("ESA/WorldCover/v200/2020").select('map')
 land_mask = worldcover.neq(80) # Máscara para ocultar océanos
 
-recent_chirps = chirps.sort('system:time_start', False).first().updateMask(land_mask)
-recent_era5 = era5.sort('system:time_start', False).first().updateMask(land_mask)
+chirps_img = chirps.sort('system:time_start', False).first()
+era5_img = era5.sort('system:time_start', False).first()
+
+# Rellenar pixeles faltantes con la media local para cobertura suave y continua sobre la tierra
+chirps_clean = chirps_img.unmask(chirps_img.reduceNeighborhood(ee.Reducer.mean(), ee.Kernel.circle(3)))
+era5_clean = era5_img.unmask(era5_img.reduceNeighborhood(ee.Reducer.mean(), ee.Kernel.circle(3)))
+
+recent_chirps = chirps_clean.updateMask(land_mask)
+recent_era5 = era5_clean.updateMask(land_mask)
 recent_gfs = gfs.sort('system:time_start', False).first().updateMask(land_mask)
 
 # Generación de URLs para las 18 capas
@@ -51,8 +58,9 @@ urls['precip'] = get_map_tile_url(
 )
 
 # 2. Temperatura ERA5 (°C)
+temp_c = recent_era5.select('temperature_2m').subtract(273.15)
 urls['temp'] = get_map_tile_url(
-    recent_era5.select('temperature_2m').subtract(273.15),
+    temp_c,
     {'min': 12, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']}
 )
 
@@ -118,21 +126,24 @@ urls['p7d'] = get_map_tile_url(gfs_7d, {'min': 0, 'max': 150, 'palette': ['#e0f3
 urls['p16d'] = get_map_tile_url(gfs_16d, {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
 # 14. Déficit Hídrico Gaussen (P - 2T)
-gaussen = recent_chirps.select('precipitation').subtract(recent_era5.select('temperature_2m').subtract(273.15).multiply(2)).updateMask(land_mask)
+precip_mm = recent_chirps.select('precipitation')
+gaussen = precip_mm.subtract(temp_c.multiply(2))
 urls['gaussen'] = get_map_tile_url(gaussen, {'min': -40, 'max': 20, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#e0f3f8', '#67a9cf', '#023858']})
 
-# 15. Estrés Hídrico Foliar (Suave y Continuo 0 a 25)
-urls['estres'] = get_map_tile_url(gaussen.multiply(-1).clamp(0, 25), {'min': 0, 'max': 15, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
+# 15. Estrés Hídrico Foliar (2T - P, suave y continuo sobre toda la tierra)
+estres = temp_c.multiply(2).subtract(precip_mm).clamp(0, 30)
+urls['estres'] = get_map_tile_url(estres, {'min': 0, 'max': 18, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 
 # 16. Aridez De Martonne
-martonne = recent_chirps.select('precipitation').multiply(12).divide(recent_era5.select('temperature_2m').subtract(273.15).add(10)).updateMask(land_mask)
+martonne = precip_mm.multiply(12).divide(temp_c.add(10))
 urls['martonne'] = get_map_tile_url(martonne, {'min': 5, 'max': 35, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6']})
 
-# 17. Susceptibilidad Sequía
-urls['suscSequia'] = get_map_tile_url(gaussen.multiply(-0.02).clamp(0, 1), {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
+# 17. Susceptibilidad Sequía (Déficit + baja humedad, suave y continuo)
+susc_seq = temp_c.multiply(1.8).subtract(precip_mm).multiply(0.03).clamp(0, 1)
+urls['suscSequia'] = get_map_tile_url(susc_seq, {'min': 0.05, 'max': 0.85, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 
 # 18. Susceptibilidad Heladas
-urls['suscHelada'] = get_map_tile_url(recent_era5.select('temperature_2m').subtract(273.15), {'min': -2, 'max': 14, 'palette': ['#1f6888', '#388385', '#529688', '#80a599', '#d4c4b0', '#b57448', '#a0562e']})
+urls['suscHelada'] = get_map_tile_url(temp_c, {'min': -2, 'max': 14, 'palette': ['#1f6888', '#388385', '#529688', '#80a599', '#d4c4b0', '#b57448', '#a0562e']})
 
 # 3. REEMPLAZAR URLS EN INDEX.HTML
 index_path = 'index.html'
