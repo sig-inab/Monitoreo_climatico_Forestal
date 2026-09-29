@@ -121,8 +121,8 @@ urls['p16d'] = get_map_tile_url(gfs_16d, {'min': 0, 'max': 300, 'palette': ['#e0
 gaussen = recent_chirps.select('precipitation').subtract(recent_era5.select('temperature_2m').subtract(273.15).multiply(2)).updateMask(land_mask)
 urls['gaussen'] = get_map_tile_url(gaussen, {'min': -40, 'max': 20, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#e0f3f8', '#67a9cf', '#023858']})
 
-# 15. Estrés Hídrico
-urls['estres'] = get_map_tile_url(gaussen.multiply(-1), {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
+# 15. Estrés Hídrico Foliar (Suave y Continuo 0 a 25)
+urls['estres'] = get_map_tile_url(gaussen.multiply(-1).clamp(0, 25), {'min': 0, 'max': 15, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 
 # 16. Aridez De Martonne
 martonne = recent_chirps.select('precipitation').multiply(12).divide(recent_era5.select('temperature_2m').subtract(273.15).add(10)).updateMask(land_mask)
@@ -150,12 +150,11 @@ if os.path.exists(index_path):
     print("✓ index.html actualizado con las 18 nuevas URLs de Earth Engine.")
 
 # 4. SUBIDA OPCIONAL A OWNCLOUD / WEBDAV
-OWNCLOUD_PUBLIC_TOKEN = "d4d832be-c204-4791-97e8-ff42cce76a97" # Token público de la carpeta
+OWNCLOUD_PUBLIC_TOKEN = "d4d832be-c204-4791-97e8-ff42cce76a97"
 WEBDAV_URL = f"https://inab.ocis.nube4.cloud/public.php/webdav/datos_climaticos_inab.json"
 
 try:
     data_payload = json.dumps({"updated_at": ee.Date(ee.Date.now()).format().getInfo(), "urls": urls}, indent=2)
-    # Autenticación WebDAV para enlace público
     res = requests.put(WEBDAV_URL, data=data_payload, auth=(OWNCLOUD_PUBLIC_TOKEN, ''), headers={'Content-Type': 'application/json'})
     if res.status_code in [200, 201, 204]:
         print("✓ Archivo de respaldo subido exitosamente a ownCloud vía WebDAV.")
