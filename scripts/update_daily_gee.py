@@ -78,8 +78,8 @@ try:
     recent_era5_raw = era5.sort('system:time_start', False).first()
     recent_era5_temp_raw = recent_era5_raw.select('temperature_2m').subtract(273.15)
     recent_era5_dew_raw = recent_era5_raw.select('dewpoint_temperature_2m').subtract(273.15)
-    recent_era5_soil1_raw = recent_era5_raw.select('soil_water_to_bottom_of_layer_1')
-    recent_era5_soil2_raw = recent_era5_raw.select('soil_water_to_bottom_of_layer_2')
+    recent_era5_soil1_raw = recent_era5_raw.select('volumetric_soil_water_layer_1')
+    recent_era5_soil2_raw = recent_era5_raw.select('volumetric_soil_water_layer_2')
 
     # Filtrar GFS a la corrida más reciente para velocidad instantánea (<0.2s)
     latest_gfs_run = gfs.sort('system:time_start', False).first()
