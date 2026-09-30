@@ -205,8 +205,8 @@ try:
             date_str = now.strftime('%Y-%m-%d')
             guatemala_geom = ee.Geometry.BBox(-92.25, 13.73, -88.22, 17.82)
 
-            def upload_to_owncloud(filename, content_bytes, content_type='application/octet-stream'):
-                dest_url = f"{base_dav}/01_DIARIOS/{filename}"
+            def upload_to_owncloud(target_folder, filename, content_bytes, content_type='application/octet-stream'):
+                dest_url = f"{base_dav}/{target_folder}/{filename}"
                 headers = {'Content-Type': content_type}
                 try:
                     # Intento 1 con auth=(token, password)
@@ -216,10 +216,10 @@ try:
                         res = requests.put(dest_url, data=content_bytes, auth=('', password), headers=headers, timeout=45)
 
                     if res.status_code in [200, 201, 204]:
-                        print(f"  ✓ Subido a ownCloud [01_DIARIOS]: {filename} ({res.status_code})", flush=True)
+                        print(f"  ✓ Subido a ownCloud [{target_folder}]: {filename} ({res.status_code})", flush=True)
                         return True
                     elif res.status_code == 404:
-                        # Si la subcarpeta 01_DIARIOS no existe, intentar en la raíz compartida
+                        # Si la subcarpeta no existe, intentar en la raíz compartida
                         fallback_url = f"{base_dav}/{filename}"
                         res2 = requests.put(fallback_url, data=content_bytes, auth=(token, password), headers=headers, timeout=45)
                         if res2.status_code == 401 and password:
@@ -232,14 +232,14 @@ try:
                     print(f"  ⚠️ Error de red al subir {filename}: {ex}", flush=True)
                 return False
 
-            # A. Subir resumen JSON de metadatos
+            # A. Subir resumen JSON de metadatos (a 01_DIARIOS)
             try:
                 data_payload = json.dumps({"fecha": date_str, "actualizado_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "urls": urls}, indent=2)
-                upload_to_owncloud("datos_climaticos_inab.json", data_payload.encode('utf-8'), 'application/json')
+                upload_to_owncloud("01_DIARIOS", "datos_climaticos_inab.json", data_payload.encode('utf-8'), 'application/json')
             except Exception as e:
                 print(f"  Aviso en JSON: {e}", flush=True)
 
-            # B. Generar y Subir Tabla CSV Departamental
+            # B. Generar y Subir Tabla CSV Departamental (a 01_DIARIOS)
             print("Generando resumen estadístico por Departamento (CSV)...", flush=True)
             try:
                 depts = ee.FeatureCollection("FAO/GAUL/2015/level1").filter(ee.Filter.eq('ADM0_NAME', 'Guatemala'))
@@ -249,7 +249,8 @@ try:
                     recent_era5_soil1_raw.rename('humedad_0_7cm'),
                     recent_era5_soil2_raw.rename('humedad_7_28cm'),
                     gaussen_raw.rename('deficit_gaussen'),
-                    recent_ndvi_raw.rename('ndvi')
+                    recent_ndvi_raw.rename('ndvi'),
+                    gfs_7d_raw.rename('p7d_mm')
                 ]).reduceRegions(
                     collection=depts,
                     reducer=ee.Reducer.mean(),
@@ -257,7 +258,7 @@ try:
                 )
                 
                 features = combined_stats.getInfo().get('features', [])
-                csv_lines = ["Departamento,Fecha,Precipitacion_Diaria_mm,Temperatura_Media_C,Humedad_Suelo_Superficial,Humedad_Suelo_Radicular,Deficit_Gaussen,NDVI_Vigor"]
+                csv_lines = ["Departamento,Fecha,Precipitacion_Diaria_mm,Temperatura_Media_C,Humedad_Suelo_Superficial,Humedad_Suelo_Radicular,Deficit_Gaussen,NDVI_Vigor,Pronostico_Lluvia_7D_mm"]
                 for f in features:
                     props = f.get('properties', {})
                     dept_name = props.get('ADM1_NAME', 'Desconocido')
@@ -267,24 +268,45 @@ try:
                     s2 = round(props.get('humedad_7_28cm', 0) or 0, 3)
                     g = round(props.get('deficit_gaussen', 0) or 0, 2)
                     nd = round(props.get('ndvi', 0) or 0, 3)
-                    csv_lines.append(f'"{dept_name}",{date_str},{p},{t},{s1},{s2},{g},{nd}')
+                    p7 = round(props.get('p7d_mm', 0) or 0, 1)
+                    csv_lines.append(f'"{dept_name}",{date_str},{p},{t},{s1},{s2},{g},{nd},{p7}')
                 
-                csv_bytes = "\n".join(csv_lines).encode('utf-8-sig') # UTF-8 con BOM para que abra bien en Excel
-                upload_to_owncloud(f"resumen_climatico_departamental_{date_str}.csv", csv_bytes, 'text/csv')
+                csv_bytes = "\n".join(csv_lines).encode('utf-8-sig') # UTF-8 con BOM para Excel
+                upload_to_owncloud("01_DIARIOS", f"resumen_climatico_departamental_{date_str}.csv", csv_bytes, 'text/csv')
             except Exception as e:
                 print(f"  Aviso al generar tabla CSV: {e}", flush=True)
 
-            # C. Generar y Subir Rásteres GeoTIFF (.tif)
-            print("Descargando rásteres GeoTIFF (.tif) de Guatemala...", flush=True)
-            layers_to_export = [
-                (recent_chirps_raw, f"CHIRPS_precipitacion_diaria_{date_str}", 5500),
-                (recent_era5_temp_raw, f"ERA5_temperatura_diaria_{date_str}", 9000),
-                (recent_era5_soil1_raw, f"ERA5_humedad_suelo_superficial_{date_str}", 9000),
-                (gaussen_raw, f"Gaussen_deficit_hidrico_{date_str}", 9000),
-                (recent_ndvi_raw, f"MODIS_ndvi_vigor_{date_str}", 1000)
+            # C. Distribución Completa de Rásteres GeoTIFF (.tif) en las 4 Carpetas
+            print("Descargando y distribuyendo rásteres GeoTIFF (.tif)...", flush=True)
+            
+            all_exports = [
+                # 01_DIARIOS (Variables de observación diaria)
+                ("01_DIARIOS", recent_chirps_raw, f"CHIRPS_precipitacion_diaria_{date_str}", 5500),
+                ("01_DIARIOS", recent_era5_temp_raw, f"ERA5_temperatura_diaria_{date_str}", 9000),
+                ("01_DIARIOS", recent_era5_soil1_raw, f"ERA5_humedad_suelo_superficial_{date_str}", 9000),
+                ("01_DIARIOS", recent_era5_soil2_raw, f"ERA5_humedad_suelo_radicular_{date_str}", 9000),
+                ("01_DIARIOS", recent_era5_dew_raw, f"ERA5_punto_rocio_{date_str}", 9000),
+                ("01_DIARIOS", wind_spd, f"GFS_viento_velocidad_{date_str}", 25000),
+                ("01_DIARIOS", gaussen_raw, f"Gaussen_deficit_hidrico_{date_str}", 9000),
+                ("01_DIARIOS", estres_raw, f"Estres_hidrico_foliar_{date_str}", 9000),
+                ("01_DIARIOS", susc_sequia_raw, f"Susceptibilidad_sequia_{date_str}", 9000),
+                ("01_DIARIOS", recent_temp, f"Susceptibilidad_heladas_{date_str}", 9000),
+
+                # 02_SEMANALES (Compuestos MODIS de 8 y 16 días)
+                ("02_SEMANALES", recent_ndvi_raw.toFloat(), f"MODIS_ndvi_vigor_16D_{date_str}", 2000),
+                ("02_SEMANALES", recent_et_raw.select('ET').multiply(0.1).toFloat(), f"MODIS_evapotranspiracion_real_8D_{date_str}", 2000),
+                ("02_SEMANALES", recent_et_raw.select('PET').multiply(0.1).toFloat(), f"MODIS_evapotranspiracion_potencial_8D_{date_str}", 2000),
+
+                # 03_MENSUALES (Acumulados y balances a 30 días)
+                ("03_MENSUALES", monthly_precip_raw, f"CHIRPS_precipitacion_mensual_acumulada_{date_str}", 5500),
+                ("03_MENSUALES", martonne_raw, f"DeMartonne_indice_aridez_{date_str}", 9000),
+
+                # 04_PRONOSTICOS_ESTACIONALES (Modelos predictivos GFS)
+                ("04_PRONOSTICOS_ESTACIONALES", gfs_7d_raw, f"GFS_pronostico_lluvia_7D_{date_str}", 25000),
+                ("04_PRONOSTICOS_ESTACIONALES", gfs_16d_raw, f"GFS_pronostico_lluvia_16D_{date_str}", 25000)
             ]
 
-            for img, name, scale in layers_to_export:
+            for folder, img, name, scale in all_exports:
                 try:
                     dl_url = img.clip(guatemala_geom).getDownloadURL({
                         'name': name,
@@ -295,7 +317,7 @@ try:
                     })
                     tif_res = requests.get(dl_url, timeout=35)
                     if tif_res.status_code == 200:
-                        upload_to_owncloud(f"{name}.tif", tif_res.content, 'image/tiff')
+                        upload_to_owncloud(folder, f"{name}.tif", tif_res.content, 'image/tiff')
                     else:
                         print(f"  Aviso al descargar {name}: HTTP {tif_res.status_code}", flush=True)
                 except Exception as ex_layer:
