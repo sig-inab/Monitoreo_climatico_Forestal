@@ -9,6 +9,7 @@ on:
 jobs:
   update-gee-tiles:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
 
@@ -29,6 +30,7 @@ jobs:
       - name: Ejecutar Script de Actualización GEE
         env:
           GEE_SERVICE_ACCOUNT_KEY: ${{ secrets.GEE_SERVICE_ACCOUNT_KEY }}
+          OWNCLOUD_CONFIG: ${{ secrets.OWNCLOUD_CONFIG }}
         run: |
           python scripts/update_daily_gee.py
 
