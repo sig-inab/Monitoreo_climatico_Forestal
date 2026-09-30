@@ -53,8 +53,8 @@ try:
     modis_ndvi = ee.ImageCollection("MODIS/061/MOD13Q1")
     modis_et = ee.ImageCollection("MODIS/061/MOD16A2")
     
-    # Cargar colección oficial ESA WorldCover (10m) y extraer imagen de cobertura
-    worldcover = ee.ImageCollection("ESA/WorldCover/v100").first().select('map')
+    # Cargar colección oficial ESA WorldCover (10m) y seleccionar banda 'Map' con M mayúscula
+    worldcover = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map')
 
     # Máscara continental ESA WorldCover (10m): ocultar océanos (clase 80 es agua marina/abierta)
     land_mask = worldcover.neq(80)
