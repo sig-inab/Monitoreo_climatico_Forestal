@@ -94,9 +94,11 @@ try:
     print("Procesando [2/18] Temperatura...", flush=True)
     urls['temp'] = get_map_tile_url(recent_temp, {'min': 12, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']})
 
-    # 3. Viento GFS
+    # 3. Viento GFS (Banda oficial: u_component_of_wind_10m_above_ground)
     print("Procesando [3/18] Viento...", flush=True)
-    wind_spd = recent_gfs_raw.select('u_component_of_wind_10m').pow(2).add(recent_gfs_raw.select('v_component_of_wind_10m').pow(2)).sqrt().multiply(1.94384)
+    u_wind = recent_gfs_raw.select('u_component_of_wind_10m_above_ground')
+    v_wind = recent_gfs_raw.select('v_component_of_wind_10m_above_ground')
+    wind_spd = u_wind.pow(2).add(v_wind.pow(2)).sqrt().multiply(1.94384)
     urls['wind'] = get_map_tile_url(prep_layer(wind_spd), {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
 
     # 4. Humedad Suelo (0-7cm)
@@ -107,9 +109,10 @@ try:
     print("Procesando [5/18] Punto de Rocío...", flush=True)
     urls['dew'] = get_map_tile_url(recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']})
 
-    # 6. Acumulada Diaria GFS
+    # 6. Acumulada Diaria GFS (Banda oficial: precipitation_rate convertida a mm/día)
     print("Procesando [6/18] Acumulada Diaria GFS...", flush=True)
-    urls['precipAccum'] = get_map_tile_url(prep_layer(recent_gfs_raw.select('total_precipitation_surface')), {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
+    precip_rate_daily = recent_gfs_raw.select('precipitation_rate').multiply(86400)
+    urls['precipAccum'] = get_map_tile_url(prep_layer(precip_rate_daily), {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
     # 7. Precipitación Mensual (30 días CHIRPS)
     print("Procesando [7/18] Precipitación Mensual...", flush=True)
@@ -133,8 +136,8 @@ try:
 
     # 12 & 13. Pronósticos 7D y 16D GFS
     print("Procesando [12/18 y 13/18] Pronósticos 7D y 16D...", flush=True)
-    gfs_7d_raw = gfs.limit(56).select('total_precipitation_surface').sum()
-    gfs_16d_raw = gfs.limit(128).select('total_precipitation_surface').sum()
+    gfs_7d_raw = gfs.limit(56).select('precipitation_rate').mean().multiply(86400 * 7)
+    gfs_16d_raw = gfs.limit(128).select('precipitation_rate').mean().multiply(86400 * 16)
     urls['p7d'] = get_map_tile_url(prep_layer(gfs_7d_raw), {'min': 0, 'max': 150, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
     urls['p16d'] = get_map_tile_url(prep_layer(gfs_16d_raw), {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
@@ -153,7 +156,7 @@ try:
     martonne_raw = recent_chirps_raw.multiply(12).divide(recent_era5_temp_raw.add(10))
     urls['martonne'] = get_map_tile_url(prep_layer(martonne_raw), {'min': 5, 'max': 35, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6']})
 
-    # 17. Susceptibilidad Sequía (de 0.0 a 0.8 continuo)
+    # 17. Susceptibilidad Sequía (0.0 a 0.8 continuo)
     print("Procesando [17/18] Susceptibilidad Sequía...", flush=True)
     susc_sequia_raw = gaussen_raw.multiply(-0.02).clamp(0, 1)
     urls['suscSequia'] = get_map_tile_url(prep_layer(susc_sequia_raw), {'min': 0.0, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
@@ -179,19 +182,27 @@ try:
     else:
         print("⚠️ Advertencia: index.html no encontrado en la raíz.", flush=True)
 
-    # 4. SUBIDA OPCIONAL A OWNCLOUD / WEBDAV (CON TIMEOUT DE 3 SEGUNDOS PARA NUNCA TRABAR EL FLUJO)
-    OWNCLOUD_PUBLIC_TOKEN = "d4d832be-c204-4791-97e8-ff42cce76a97"
-    WEBDAV_URL = f"https://inab.ocis.nube4.cloud/public.php/webdav/datos_climaticos_inab.json"
-
-    try:
-        data_payload = json.dumps({"updated_at": ee.Date(ee.Date.now()).format().getInfo(), "urls": urls}, indent=2)
-        res = requests.put(WEBDAV_URL, data=data_payload, auth=(OWNCLOUD_PUBLIC_TOKEN, ''), headers={'Content-Type': 'application/json'}, timeout=3)
-        if res.status_code in [200, 201, 204]:
-            print("✓ Archivo de respaldo subido exitosamente a ownCloud vía WebDAV.", flush=True)
-        else:
-            print(f"Respuesta ownCloud WebDAV ({res.status_code})", flush=True)
-    except Exception as e:
-        print(f"Nota: Subida a ownCloud WebDAV omitida ({e})", flush=True)
+    # 4. SUBIDA A OWNCLOUD / WEBDAV (LEÍDO DESDE OWNCLOUD_CONFIG SI EXISTE)
+    owncloud_config_raw = os.environ.get('OWNCLOUD_CONFIG')
+    if owncloud_config_raw and owncloud_config_raw.strip():
+        try:
+            oc_cfg = json.loads(owncloud_config_raw.strip())
+            token = oc_cfg.get('token')
+            password = oc_cfg.get('password', '')
+            webdav_url = oc_cfg.get('webdav_url', 'https://inab.ocis.nube4.cloud/public.php/webdav/')
+            
+            auth = (token, password) if token else (oc_cfg.get('user', ''), oc_cfg.get('password', ''))
+            
+            data_payload = json.dumps({"updated_at": ee.Date(ee.Date.now()).format().getInfo(), "urls": urls}, indent=2)
+            dest_url = f"{webdav_url.rstrip('/')}/01_DIARIOS/datos_climaticos_inab.json"
+            
+            res = requests.put(dest_url, data=data_payload, auth=auth, headers={'Content-Type': 'application/json'}, timeout=5)
+            if res.status_code in [200, 201, 204]:
+                print(f"✓ Respaldo subido a ownCloud exitosamente en 01_DIARIOS ({res.status_code})", flush=True)
+            else:
+                print(f"Nota ownCloud WebDAV ({res.status_code}): {res.text[:100]}", flush=True)
+        except Exception as e:
+            print(f"Nota: Subida a ownCloud omitida ({e})", flush=True)
 
     print("✓ Proceso completado exitosamente.", flush=True)
 
