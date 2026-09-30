@@ -191,27 +191,112 @@ try:
     else:
         print("⚠️ Advertencia: index.html no encontrado en la raíz.", flush=True)
 
-    # 4. SUBIDA A OWNCLOUD / WEBDAV (SI EXISTE OWNCLOUD_CONFIG)
+    # 4. EXPORTACIÓN DE GEOTIFFS, TABLAS Y SUBIDA A OWNCLOUD (SI EXISTE OWNCLOUD_CONFIG)
     owncloud_config_raw = os.environ.get('OWNCLOUD_CONFIG')
     if owncloud_config_raw and owncloud_config_raw.strip():
+        print("\n--- Iniciando generación de Rásteres (.tif) y Tablas (.csv) para ownCloud ---", flush=True)
         try:
             oc_cfg = json.loads(owncloud_config_raw.strip())
-            token = oc_cfg.get('token')
+            token = oc_cfg.get('token', 'LYKifAMgtrqhJiq')
             password = oc_cfg.get('password', '')
-            webdav_url = oc_cfg.get('webdav_url', 'https://inab.ocis.nube4.cloud/public.php/webdav/')
             
-            auth = (token, password) if token else (oc_cfg.get('user', ''), oc_cfg.get('password', ''))
-            
-            data_payload = json.dumps({"updated_at": ee.Date(ee.Date.now()).format().getInfo(), "urls": urls}, indent=2)
-            dest_url = f"{webdav_url.rstrip('/')}/01_DIARIOS/datos_climaticos_inab.json"
-            
-            res = requests.put(dest_url, data=data_payload, auth=auth, headers={'Content-Type': 'application/json'}, timeout=5)
-            if res.status_code in [200, 201, 204]:
-                print(f"✓ Respaldo subido a ownCloud exitosamente en 01_DIARIOS ({res.status_code})", flush=True)
-            else:
-                print(f"Nota ownCloud WebDAV ({res.status_code})", flush=True)
+            # Endpoint oficial de ownCloud Infinite Scale (oCIS) para enlaces públicos
+            base_dav = f"https://inab.ocis.nube4.cloud/remote.php/dav/public-files/{token}"
+            auth = (token, password) if password else (token, '')
+            date_str = now.strftime('%Y-%m-%d')
+            guatemala_geom = ee.Geometry.BBox(-92.25, 13.73, -88.22, 17.82)
+
+            def upload_to_owncloud(filename, content_bytes, content_type='application/octet-stream'):
+                dest_url = f"{base_dav}/01_DIARIOS/{filename}"
+                headers = {'Content-Type': content_type}
+                try:
+                    res = requests.put(dest_url, data=content_bytes, auth=auth, headers=headers, timeout=45)
+                    if res.status_code in [200, 201, 204]:
+                        print(f"  ✓ Subido a ownCloud [01_DIARIOS]: {filename} ({res.status_code})", flush=True)
+                        return True
+                    elif res.status_code == 404:
+                        # Si no existe la subcarpeta 01_DIARIOS, intentar en la raíz de la carpeta compartida
+                        fallback_url = f"{base_dav}/{filename}"
+                        res2 = requests.put(fallback_url, data=content_bytes, auth=auth, headers=headers, timeout=45)
+                        if res2.status_code in [200, 201, 204]:
+                            print(f"  ✓ Subido a ownCloud [Raíz]: {filename} ({res2.status_code})", flush=True)
+                            return True
+                    print(f"  ⚠️ Aviso en {filename}: Servidor respondió HTTP {res.status_code}", flush=True)
+                except Exception as ex:
+                    print(f"  ⚠️ Error de red al subir {filename}: {ex}", flush=True)
+                return False
+
+            # A. Subir resumen JSON de metadatos
+            try:
+                data_payload = json.dumps({"fecha": date_str, "actualizado_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "urls": urls}, indent=2)
+                upload_to_owncloud("datos_climaticos_inab.json", data_payload.encode('utf-8'), 'application/json')
+            except Exception as e:
+                print(f"  Aviso en JSON: {e}", flush=True)
+
+            # B. Generar y Subir Tabla CSV Departamental
+            print("Generando resumen estadístico por Departamento (CSV)...", flush=True)
+            try:
+                depts = ee.FeatureCollection("FAO/GAUL/2015/level1").filter(ee.Filter.eq('ADM0_NAME', 'Guatemala'))
+                combined_stats = ee.Image.cat([
+                    recent_chirps_raw.rename('precip_mm'),
+                    recent_era5_temp_raw.rename('temp_c'),
+                    recent_era5_soil1_raw.rename('humedad_0_7cm'),
+                    recent_era5_soil2_raw.rename('humedad_7_28cm'),
+                    gaussen_raw.rename('deficit_gaussen'),
+                    recent_ndvi_raw.rename('ndvi')
+                ]).reduceRegions(
+                    collection=depts,
+                    reducer=ee.Reducer.mean(),
+                    scale=10000
+                )
+                
+                features = combined_stats.getInfo().get('features', [])
+                csv_lines = ["Departamento,Fecha,Precipitacion_Diaria_mm,Temperatura_Media_C,Humedad_Suelo_Superficial,Humedad_Suelo_Radicular,Deficit_Gaussen,NDVI_Vigor"]
+                for f in features:
+                    props = f.get('properties', {})
+                    dept_name = props.get('ADM1_NAME', 'Desconocido')
+                    p = round(props.get('precip_mm', 0) or 0, 2)
+                    t = round(props.get('temp_c', 0) or 0, 2)
+                    s1 = round(props.get('humedad_0_7cm', 0) or 0, 3)
+                    s2 = round(props.get('humedad_7_28cm', 0) or 0, 3)
+                    g = round(props.get('deficit_gaussen', 0) or 0, 2)
+                    nd = round(props.get('ndvi', 0) or 0, 3)
+                    csv_lines.append(f'"{dept_name}",{date_str},{p},{t},{s1},{s2},{g},{nd}')
+                
+                csv_bytes = "\n".join(csv_lines).encode('utf-8-sig') # UTF-8 con BOM para Excel
+                upload_to_owncloud(f"resumen_climatico_departamental_{date_str}.csv", csv_bytes, 'text/csv')
+            except Exception as e:
+                print(f"  Aviso al generar tabla CSV: {e}", flush=True)
+
+            # C. Generar y Subir Rásteres GeoTIFF (.tif)
+            print("Descargando rásteres GeoTIFF (.tif) de Guatemala...", flush=True)
+            layers_to_export = [
+                (recent_chirps_raw, f"CHIRPS_precipitacion_diaria_{date_str}", 5500),
+                (recent_era5_temp_raw, f"ERA5_temperatura_diaria_{date_str}", 9000),
+                (recent_era5_soil1_raw, f"ERA5_humedad_suelo_superficial_{date_str}", 9000),
+                (gaussen_raw, f"Gaussen_deficit_hidrico_{date_str}", 9000),
+                (recent_ndvi_raw, f"MODIS_ndvi_vigor_{date_str}", 1000)
+            ]
+
+            for img, name, scale in layers_to_export:
+                try:
+                    dl_url = img.clip(guatemala_geom).getDownloadURL({
+                        'name': name,
+                        'format': 'GEO_TIFF',
+                        'scale': scale,
+                        'crs': 'EPSG:4326',
+                        'region': guatemala_geom
+                    })
+                    tif_res = requests.get(dl_url, timeout=35)
+                    if tif_res.status_code == 200:
+                        upload_to_owncloud(f"{name}.tif", tif_res.content, 'image/tiff')
+                    else:
+                        print(f"  Aviso al descargar {name}: HTTP {tif_res.status_code}", flush=True)
+                except Exception as ex_layer:
+                    print(f"  Aviso en ráster {name}: {ex_layer}", flush=True)
+
         except Exception as e:
-            print(f"Nota: Subida a ownCloud omitida ({e})", flush=True)
+            print(f"Nota: Proceso de ownCloud finalizado con aviso ({e})", flush=True)
 
     print("✓ Proceso completado exitosamente en pocos segundos.", flush=True)
 
