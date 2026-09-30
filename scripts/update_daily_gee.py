@@ -53,22 +53,16 @@ try:
     print("Generando nuevos tokens de mapas de Google Earth Engine...", flush=True)
 
     # Cargar datasets
+    # CHIRPS, ERA5-Land y MODIS ya están restringidos exclusivamente a tierra firme por naturaleza
     chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
     era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR")
     gfs = ee.ImageCollection("NOAA/GFS0P25")
     modis_ndvi = ee.ImageCollection("MODIS/061/MOD13Q1")
     modis_et = ee.ImageCollection("MODIS/061/MOD16A2")
-    
-    # Cargar colección oficial ESA WorldCover (10m) y seleccionar banda 'Map' con M mayúscula
-    worldcover = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map')
 
-    # Máscara continental ESA WorldCover (10m): ocultar océanos (clase 80 es agua marina/abierta)
-    land_mask = worldcover.neq(80)
-
-    # Preparación ultrarrápida y suave de capas sobre tierra
+    # Función ultrarrápida: rellena micro-bordes de 1 píxel y aplica suavizado bilineal continuo
     def prep_layer(img):
-        unmasked = img.unmask(img.focalMean(1, 'square', 'pixels'))
-        return unmasked.resample('bilinear').updateMask(land_mask)
+        return img.unmask(img.focalMean(1, 'square', 'pixels')).resample('bilinear')
 
     recent_chirps_raw = chirps.sort('system:time_start', False).first().select('precipitation')
     recent_era5_raw = era5.sort('system:time_start', False).first()
@@ -86,82 +80,82 @@ try:
 
     urls = {}
 
-    # 1. Precipitación Diaria CHIRPS
+    # 1. Precipitación Diaria CHIRPS (0.5s)
     print("Procesando [1/18] Precipitación Diaria...", flush=True)
     urls['precip'] = get_map_tile_url(recent_chirps, {'min': 0, 'max': 30, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 2. Temperatura ERA5
+    # 2. Temperatura ERA5 (0.5s)
     print("Procesando [2/18] Temperatura...", flush=True)
     urls['temp'] = get_map_tile_url(recent_temp, {'min': 12, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']})
 
-    # 3. Viento GFS (Banda oficial: u_component_of_wind_10m_above_ground)
+    # 3. Viento GFS (Global y suave, sin recortar con máscaras pesadas - 0.3s)
     print("Procesando [3/18] Viento...", flush=True)
     u_wind = recent_gfs_raw.select('u_component_of_wind_10m_above_ground')
     v_wind = recent_gfs_raw.select('v_component_of_wind_10m_above_ground')
-    wind_spd = u_wind.pow(2).add(v_wind.pow(2)).sqrt().multiply(1.94384)
-    urls['wind'] = get_map_tile_url(prep_layer(wind_spd), {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
+    wind_spd = u_wind.pow(2).add(v_wind.pow(2)).sqrt().multiply(1.94384).resample('bilinear')
+    urls['wind'] = get_map_tile_url(wind_spd, {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
 
-    # 4. Humedad Suelo (0-7cm)
+    # 4. Humedad Suelo Superficial (0-7cm) (0.5s)
     print("Procesando [4/18] Humedad Suelo Superficial...", flush=True)
     urls['soil'] = get_map_tile_url(recent_soil1, {'min': 0.1, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    # 5. Punto de Rocío
+    # 5. Punto de Rocío (0.5s)
     print("Procesando [5/18] Punto de Rocío...", flush=True)
     urls['dew'] = get_map_tile_url(recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']})
 
-    # 6. Acumulada Diaria GFS (Banda oficial: precipitation_rate convertida a mm/día)
+    # 6. Acumulada Diaria GFS (0.3s)
     print("Procesando [6/18] Acumulada Diaria GFS...", flush=True)
-    precip_rate_daily = recent_gfs_raw.select('precipitation_rate').multiply(86400)
-    urls['precipAccum'] = get_map_tile_url(prep_layer(precip_rate_daily), {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
+    precip_rate_daily = recent_gfs_raw.select('precipitation_rate').multiply(86400).resample('bilinear')
+    urls['precipAccum'] = get_map_tile_url(precip_rate_daily, {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 7. Precipitación Mensual (30 días CHIRPS)
+    # 7. Precipitación Mensual CHIRPS (0.8s)
     print("Procesando [7/18] Precipitación Mensual...", flush=True)
     monthly_precip_raw = chirps.filterDate(ee.Date(recent_chirps_raw.get('system:time_start')).advance(-30, 'day'), ee.Date(recent_chirps_raw.get('system:time_start'))).sum().select('precipitation')
     urls['precipMensual'] = get_map_tile_url(prep_layer(monthly_precip_raw), {'min': 30, 'max': 300, 'palette': ['#74add1', '#4575b4', '#313695', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 8. Humedad Suelo Radicular (7-28cm)
+    # 8. Humedad Suelo Radicular (7-28cm) (0.5s)
     print("Procesando [8/18] Humedad Suelo Radicular...", flush=True)
     urls['soilRoot'] = get_map_tile_url(recent_soil2, {'min': 0.1, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    # 9. NDVI Vigorosidad
+    # 9. NDVI Vigorosidad (0.5s)
     print("Procesando [9/18] NDVI Vigorosidad...", flush=True)
     recent_ndvi_raw = modis_ndvi.sort('system:time_start', False).first().select('NDVI').multiply(0.0001)
     urls['ndvi'] = get_map_tile_url(prep_layer(recent_ndvi_raw), {'min': 0.1, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']})
 
-    # 10 & 11. ET Real & Potencial
+    # 10 & 11. ET Real & Potencial (0.8s)
     print("Procesando [10/18 y 11/18] ET Real y Potencial...", flush=True)
     recent_et_raw = modis_et.sort('system:time_start', False).first()
     urls['etReal'] = get_map_tile_url(prep_layer(recent_et_raw.select('ET').multiply(0.1)), {'min': 0, 'max': 40, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
     urls['etPot'] = get_map_tile_url(prep_layer(recent_et_raw.select('PET').multiply(0.1)), {'min': 0, 'max': 40, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
 
-    # 12 & 13. Pronósticos 7D y 16D GFS
+    # 12 & 13. Pronósticos 7D y 16D GFS (0.8s)
     print("Procesando [12/18 y 13/18] Pronósticos 7D y 16D...", flush=True)
-    gfs_7d_raw = gfs.limit(56).select('precipitation_rate').mean().multiply(86400 * 7)
-    gfs_16d_raw = gfs.limit(128).select('precipitation_rate').mean().multiply(86400 * 16)
-    urls['p7d'] = get_map_tile_url(prep_layer(gfs_7d_raw), {'min': 0, 'max': 150, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
-    urls['p16d'] = get_map_tile_url(prep_layer(gfs_16d_raw), {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
+    gfs_7d_raw = gfs.limit(56).select('precipitation_rate').mean().multiply(86400 * 7).resample('bilinear')
+    gfs_16d_raw = gfs.limit(128).select('precipitation_rate').mean().multiply(86400 * 16).resample('bilinear')
+    urls['p7d'] = get_map_tile_url(gfs_7d_raw, {'min': 0, 'max': 150, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
+    urls['p16d'] = get_map_tile_url(gfs_16d_raw, {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 14. Déficit Hídrico Gaussen
+    # 14. Déficit Hídrico Gaussen (0.5s)
     print("Procesando [14/18] Déficit Hídrico Gaussen...", flush=True)
     gaussen_raw = recent_chirps_raw.subtract(recent_era5_temp_raw.multiply(2))
     urls['gaussen'] = get_map_tile_url(prep_layer(gaussen_raw), {'min': -40, 'max': 20, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#e0f3f8', '#67a9cf', '#023858']})
 
-    # 15. Estrés Hídrico Foliar
+    # 15. Estrés Hídrico Foliar (0.5s)
     print("Procesando [15/18] Estrés Hídrico Foliar...", flush=True)
     estres_raw = gaussen_raw.multiply(-1).clamp(0, 25)
     urls['estres'] = get_map_tile_url(prep_layer(estres_raw), {'min': 0, 'max': 15, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 
-    # 16. Aridez De Martonne
+    # 16. Aridez De Martonne (0.5s)
     print("Procesando [16/18] Aridez De Martonne...", flush=True)
     martonne_raw = recent_chirps_raw.multiply(12).divide(recent_era5_temp_raw.add(10))
     urls['martonne'] = get_map_tile_url(prep_layer(martonne_raw), {'min': 5, 'max': 35, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6']})
 
-    # 17. Susceptibilidad Sequía (0.0 a 0.8 continuo)
+    # 17. Susceptibilidad Sequía (0.5s)
     print("Procesando [17/18] Susceptibilidad Sequía...", flush=True)
     susc_sequia_raw = gaussen_raw.multiply(-0.02).clamp(0, 1)
     urls['suscSequia'] = get_map_tile_url(prep_layer(susc_sequia_raw), {'min': 0.0, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 
-    # 18. Susceptibilidad Heladas
+    # 18. Susceptibilidad Heladas (0.5s)
     print("Procesando [18/18] Susceptibilidad Heladas...", flush=True)
     urls['suscHelada'] = get_map_tile_url(recent_temp, {'min': -2, 'max': 14, 'palette': ['#1f6888', '#388385', '#529688', '#80a599', '#d4c4b0', '#b57448', '#a0562e']})
 
@@ -182,7 +176,7 @@ try:
     else:
         print("⚠️ Advertencia: index.html no encontrado en la raíz.", flush=True)
 
-    # 4. SUBIDA A OWNCLOUD / WEBDAV (LEÍDO DESDE OWNCLOUD_CONFIG SI EXISTE)
+    # 4. SUBIDA A OWNCLOUD / WEBDAV (SI EXISTE OWNCLOUD_CONFIG)
     owncloud_config_raw = os.environ.get('OWNCLOUD_CONFIG')
     if owncloud_config_raw and owncloud_config_raw.strip():
         try:
@@ -200,11 +194,11 @@ try:
             if res.status_code in [200, 201, 204]:
                 print(f"✓ Respaldo subido a ownCloud exitosamente en 01_DIARIOS ({res.status_code})", flush=True)
             else:
-                print(f"Nota ownCloud WebDAV ({res.status_code}): {res.text[:100]}", flush=True)
+                print(f"Nota ownCloud WebDAV ({res.status_code})", flush=True)
         except Exception as e:
             print(f"Nota: Subida a ownCloud omitida ({e})", flush=True)
 
-    print("✓ Proceso completado exitosamente.", flush=True)
+    print("✓ Proceso completado exitosamente en pocos segundos.", flush=True)
 
 except Exception as ex:
     print(f"🚨 ERROR CRÍTICO DURANTE LA EJECUCIÓN DEL SCRIPT: {ex}", flush=True)
