@@ -877,21 +877,18 @@
                 } else if (activeGeeKey === 'gaussen') {
                     const gVal = (rainVal - 2 * tempVal).toFixed(1);
                     flagValue = gVal + (gVal < 0 ? ' (Déficit)' : ' (Superávit)');
-                } else if (activeGeeKey === 'estres') {
-                    const deficit = Math.max(0, (2 * tempVal) - rainVal);
-                    if (deficit === 0) {
-                        flagValue = 'Saludable (0.0)';
-                    } else if (deficit < 10) {
-                        flagValue = `Medio (${(deficit / 2.5).toFixed(1)})`;
-                    } else {
-                        flagValue = `Severo (${Math.min(8.0, 3.5 + (deficit / 4)).toFixed(1)})`;
-                    }
+               } else if (activeGeeKey === 'estres') {
+                    const soilAvg = (parseFloat(soil1Pct) + parseFloat(soil2Pct)) / 2;
+                    const estresVal = Math.max(0, Math.min(8.0, (36 - soilAvg) * 0.45)).toFixed(1);
+                    const estresLabel = estresVal < 2.5 ? 'Saludable' : (estresVal < 5.5 ? 'Medio' : 'Severo');
+                    flagValue = `${estresLabel} (${estresVal})`;
                 } else if (activeGeeKey === 'martonne') {
                     const mVal = ((rainVal * 12) / (tempVal + 10)).toFixed(1);
                     flagValue = mVal + ' (Índice)';
                 } else if (activeGeeKey === 'suscSequia') {
-                    const droughtScore = Math.min(0.95, Math.max(0.08, (1 - (soil1Pct / 100)) * 0.7 + (rainVal < 2 ? 0.25 : 0.05))).toFixed(2);
-                    const dLabel = droughtScore > 0.6 ? 'Alta' : (droughtScore > 0.35 ? 'Media' : 'Baja');
+                    const soilAvg = (parseFloat(soil1Pct) + parseFloat(soil2Pct)) / 2;
+                    const droughtScore = Math.max(0.08, Math.min(0.95, (38 - soilAvg) * 0.035)).toFixed(2);
+                    const dLabel = droughtScore > 0.6 ? 'Alta' : (droughtScore > 0.3 ? 'Media' : 'Baja');
                     flagValue = `${dLabel} (${droughtScore})`;
                 } else if (activeGeeKey === 'suscHelada') {
                     const minTempToday = daily.temperature_2m_min[0];
