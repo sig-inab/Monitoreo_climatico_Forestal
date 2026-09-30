@@ -202,7 +202,6 @@ try:
             
             # Endpoint oficial de ownCloud Infinite Scale (oCIS) para enlaces públicos
             base_dav = f"https://inab.ocis.nube4.cloud/remote.php/dav/public-files/{token}"
-            auth = (token, password) if password else (token, '')
             date_str = now.strftime('%Y-%m-%d')
             guatemala_geom = ee.Geometry.BBox(-92.25, 13.73, -88.22, 17.82)
 
@@ -210,14 +209,21 @@ try:
                 dest_url = f"{base_dav}/01_DIARIOS/{filename}"
                 headers = {'Content-Type': content_type}
                 try:
-                    res = requests.put(dest_url, data=content_bytes, auth=auth, headers=headers, timeout=45)
+                    # Intento 1 con auth=(token, password)
+                    res = requests.put(dest_url, data=content_bytes, auth=(token, password), headers=headers, timeout=45)
+                    # Si responde 401, reintento 2 con auth=('', password) propio de SabreDAV
+                    if res.status_code == 401 and password:
+                        res = requests.put(dest_url, data=content_bytes, auth=('', password), headers=headers, timeout=45)
+
                     if res.status_code in [200, 201, 204]:
                         print(f"  ✓ Subido a ownCloud [01_DIARIOS]: {filename} ({res.status_code})", flush=True)
                         return True
                     elif res.status_code == 404:
-                        # Si no existe la subcarpeta 01_DIARIOS, intentar en la raíz de la carpeta compartida
+                        # Si la subcarpeta 01_DIARIOS no existe, intentar en la raíz compartida
                         fallback_url = f"{base_dav}/{filename}"
-                        res2 = requests.put(fallback_url, data=content_bytes, auth=auth, headers=headers, timeout=45)
+                        res2 = requests.put(fallback_url, data=content_bytes, auth=(token, password), headers=headers, timeout=45)
+                        if res2.status_code == 401 and password:
+                            res2 = requests.put(fallback_url, data=content_bytes, auth=('', password), headers=headers, timeout=45)
                         if res2.status_code in [200, 201, 204]:
                             print(f"  ✓ Subido a ownCloud [Raíz]: {filename} ({res2.status_code})", flush=True)
                             return True
@@ -263,7 +269,7 @@ try:
                     nd = round(props.get('ndvi', 0) or 0, 3)
                     csv_lines.append(f'"{dept_name}",{date_str},{p},{t},{s1},{s2},{g},{nd}')
                 
-                csv_bytes = "\n".join(csv_lines).encode('utf-8-sig') # UTF-8 con BOM para Excel
+                csv_bytes = "\n".join(csv_lines).encode('utf-8-sig') # UTF-8 con BOM para que abra bien en Excel
                 upload_to_owncloud(f"resumen_climatico_departamental_{date_str}.csv", csv_bytes, 'text/csv')
             except Exception as e:
                 print(f"  Aviso al generar tabla CSV: {e}", flush=True)
