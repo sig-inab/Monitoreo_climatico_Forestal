@@ -157,8 +157,9 @@ try:
 
     # 15. Estrés Hídrico Foliar (0.3s)
     print("Procesando [15/18] Estrés Hídrico Foliar...", flush=True)
-    estres_raw = gaussen_raw.multiply(-1).clamp(0, 25)
-    urls['estres'] = get_map_tile_url(prep_layer(estres_raw), {'min': 0, 'max': 15, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
+    soil_pct = recent_era5_soil1_raw.add(recent_era5_soil2_raw).multiply(50)
+    estres_raw = ee.Image(36).subtract(soil_pct).multiply(0.45).clamp(0, 8)
+    urls['estres'] = get_map_tile_url(prep_layer(estres_raw), {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 
     # 16. Aridez De Martonne (0.3s)
     print("Procesando [16/18] Aridez De Martonne...", flush=True)
@@ -167,8 +168,8 @@ try:
 
     # 17. Susceptibilidad Sequía (0.3s)
     print("Procesando [17/18] Susceptibilidad Sequía...", flush=True)
-    susc_sequia_raw = gaussen_raw.multiply(-0.02).clamp(0, 1)
-    urls['suscSequia'] = get_map_tile_url(prep_layer(susc_sequia_raw), {'min': 0.0, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
+    susc_sequia_raw = ee.Image(38).subtract(soil_pct).multiply(0.035).clamp(0.08, 0.95)
+    urls['suscSequia'] = get_map_tile_url(prep_layer(susc_sequia_raw), {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 
     # 18. Susceptibilidad Heladas (0.3s)
     print("Procesando [18/18] Susceptibilidad Heladas...", flush=True)
