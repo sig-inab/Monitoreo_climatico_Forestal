@@ -52,9 +52,11 @@ try:
     gfs = ee.ImageCollection("NOAA/GFS0P25")
     modis_ndvi = ee.ImageCollection("MODIS/061/MOD13Q1")
     modis_et = ee.ImageCollection("MODIS/061/MOD16A2")
-    worldcover = ee.Image("ESA/WorldCover/v200/2020").select('map')
+    
+    # Cargar colección oficial ESA WorldCover (10m) y extraer imagen de cobertura
+    worldcover = ee.ImageCollection("ESA/WorldCover/v100").first().select('map')
 
-    # Máscara continental ESA WorldCover (10m)
+    # Máscara continental ESA WorldCover (10m): ocultar océanos (clase 80 es agua marina/abierta)
     land_mask = worldcover.neq(80)
 
     # Preparación ultrarrápida y suave de capas sobre tierra
