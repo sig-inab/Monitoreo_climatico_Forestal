@@ -489,24 +489,24 @@
 
         // 1. DICCIONARIO DE CAPAS GEE (18 URLS OFICIALES)
         const GEE_URLS = {
-            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f7c4423e21021d62923f305c87c7132e-2ce50a133e48cf1d1dd5422d168085a2/tiles/{z}/{x}/{y}',
-            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/394bb3d81e5a605b2abbe72b123ade2f-4ecf6b94d50b8e7810384a8f352f89e2/tiles/{z}/{x}/{y}',
-            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/306a56ed45c49f75e04f327d6997cd23-65b98ed74549eb44134665e2a59cc7d8/tiles/{z}/{x}/{y}',
-            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9a637795c53b01123e8715a6d00e0956-3f65d10f7955df59d9d906b7b765b79f/tiles/{z}/{x}/{y}',
-            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/03884a29fe09c6dca056e565990e001d-c3e0798b2d1777aff105300a1adfec5b/tiles/{z}/{x}/{y}',
-            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/46dcee55d7e3e9ea45fac8eb20139a18-be1b081bb5f7d9c955461bc3f5764af3/tiles/{z}/{x}/{y}',
-            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/582eeb66371c8b04d26430b4b0fa1ce5-25578a6a115322a14bb1762c65135024/tiles/{z}/{x}/{y}',
-            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d8289531d6ecc0e450d7da7967d10590-c428eec163488e3861c84f1b03db9d9e/tiles/{z}/{x}/{y}',
-            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c6803d65e585c8864493de4d51170df5-7c3b9fbf612e4360c9adc0fc9fa21d62/tiles/{z}/{x}/{y}',
-            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ba1f3a23ea821b68f7bf36a904ff7a08-7c61eb671e8a73b5f60b9e146e82b1f7/tiles/{z}/{x}/{y}',
-            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c78ed5182239733a14e7382e78f0465d-14d07637607c50ef911c05e27e25dcc5/tiles/{z}/{x}/{y}',
-            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/95eb7ca340e8110113beb88cefc5e1b8-9e9b546754c7ca1e3ab2c296e6b6ef1c/tiles/{z}/{x}/{y}',
-            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/751804fdcf8957b77878fa586b9b36f4-b0af23f3288fb4b9332771ff971d7524/tiles/{z}/{x}/{y}',
-            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d971cc4cc3e84c557c09c48eafbf8790-6ae1b9791e7ee2fd64e824ca5c9f21d9/tiles/{z}/{x}/{y}',
-            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ebfa1403991482e64479fbf4a6c4ee4a-4f97f103523d0decbd46c3ef31863311/tiles/{z}/{x}/{y}',
-            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/1c6f242758b79c099339c396141cc01f-cfbfe3499711516cdbb7a2774301f3c3/tiles/{z}/{x}/{y}',
-            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f03e920f58971d166247847e5ee731f4-c432e7ba94286487f5e244eca709ba41/tiles/{z}/{x}/{y}',
-            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/361e38ce079b52cd9a4985052e387f9b-06fb445644ae93a6134cb495e5ed1bc3/tiles/{z}/{x}/{y}'
+            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f7c4423e21021d62923f305c87c7132e-56a2a670f8188dcf6876585fb75371df/tiles/{z}/{x}/{y}',
+            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/394bb3d81e5a605b2abbe72b123ade2f-27aa85473e0c03a5dcf149b8916f0a1b/tiles/{z}/{x}/{y}',
+            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/008ca01de28eb652266d1d7e4424167f-7152e3e189c64ed881672d8582d2b3f5/tiles/{z}/{x}/{y}',
+            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9a637795c53b01123e8715a6d00e0956-7a0f1124ca52c641c613432ecfa18a07/tiles/{z}/{x}/{y}',
+            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/03884a29fe09c6dca056e565990e001d-76f0ec5e7845dd4052de9d4eb37d0e12/tiles/{z}/{x}/{y}',
+            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/27d0126142a0854294e11a6ebf8c07a1-cc4bbfaabebd5b0a8dd5e0c03c0f18be/tiles/{z}/{x}/{y}',
+            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/582eeb66371c8b04d26430b4b0fa1ce5-260bbc0977488016d333a79eae9ff9fa/tiles/{z}/{x}/{y}',
+            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d8289531d6ecc0e450d7da7967d10590-4369e3b679420503c38d258e9f87e29b/tiles/{z}/{x}/{y}',
+            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c6803d65e585c8864493de4d51170df5-d301277b32024492463cb71587f44968/tiles/{z}/{x}/{y}',
+            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ba1f3a23ea821b68f7bf36a904ff7a08-a3b3c0d368930c14031c3fd3c895df7a/tiles/{z}/{x}/{y}',
+            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c78ed5182239733a14e7382e78f0465d-78b3633b12ba0e6ab178544fc2fd8f8d/tiles/{z}/{x}/{y}',
+            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/7167b5fc85b4729841b407fd5b61ba76-91428325bf3efe8c19f745d257433110/tiles/{z}/{x}/{y}',
+            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/80ff681942c86f0e8f6e6ab27d01aa34-d1d0c67eec64a37257cfeecfdc80d4c8/tiles/{z}/{x}/{y}',
+            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d971cc4cc3e84c557c09c48eafbf8790-685857ae0219aeafa40af094143d913b/tiles/{z}/{x}/{y}',
+            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ebfa1403991482e64479fbf4a6c4ee4a-da52299a57f8382dc85dcbe1f31b0980/tiles/{z}/{x}/{y}',
+            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/1c6f242758b79c099339c396141cc01f-a2c41a9c81e382d7304b544575f7fbc7/tiles/{z}/{x}/{y}',
+            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f03e920f58971d166247847e5ee731f4-b38ea39a8f2493fc55719b67a8f3125c/tiles/{z}/{x}/{y}',
+            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/361e38ce079b52cd9a4985052e387f9b-11578714fefe08805d2a408b20db6c83/tiles/{z}/{x}/{y}'
         };
 
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
