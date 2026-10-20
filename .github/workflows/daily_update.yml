@@ -9,7 +9,6 @@ on:
 jobs:
   update-gee-tiles:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     permissions:
       contents: write
 
