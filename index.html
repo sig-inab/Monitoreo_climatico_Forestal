@@ -365,13 +365,413 @@
             border-bottom: 1px solid rgba(255,255,255,0.15);
             padding-bottom: 4px;
         }
+    
+        /* ── CONTROL DE OPACIDAD EN LEYENDA FLOTANTE ── */
+        .layer-opacity-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 4px;
+            width: 100%;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 4px;
+        }
+        .layer-opacity-box input[type="range"] {
+            width: 110px;
+            height: 4px;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+        }
+        .layer-opacity-box span { font-weight: 600; }
+
+        /* ── BOTÓN ESTACIONES ANACAFE ── */
+        .stations-btn {
+            position: absolute;
+            top: 70px;
+            left: 72px;
+            z-index: 1001;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border-glass);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+        .stations-btn:hover { transform: scale(1.05); color: var(--accent-blue); }
+        .stations-btn.active {
+            background: var(--accent-blue);
+            color: #0f172a;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+        }
+
+        /* ── CAJÓN DE ESTACIONES ANACAFE (PREVENCIÓN DE TRASLAPE) ── */
+        .stations-drawer {
+            position: absolute;
+            top: 125px;
+            left: 20px;
+            z-index: 1000;
+            background: var(--bg-dark);
+            color: #fff;
+            width: 380px;
+            max-width: 92vw;
+            max-height: calc(100vh - 150px);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border-glass);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        .stations-drawer.open { display: flex; }
+
+        .st-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+        }
+        .st-drawer-header h4 {
+            margin: 0;
+            font-size: 13px;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .st-close-btn {
+            cursor: pointer;
+            font-size: 15px;
+            color: #94a3b8;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .st-close-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+        .st-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: rgba(255,255,255,0.04);
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .st-badge-live {
+            font-size: 11px;
+            color: var(--accent-green);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .st-badge-live i { font-size: 8px; animation: stPulse 2s infinite; }
+        @keyframes stPulse { 0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;} }
+
+        .st-refresh-btn {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .st-refresh-btn:hover { background: var(--accent-blue); color: #0f172a; }
+
+        .st-section-title {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        .st-vars-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .st-var-btn {
+            background: rgba(255,255,255,0.06);
+            color: #cbd5e1;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 7px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .st-var-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .st-var-btn.active {
+            background: var(--accent-blue);
+            color: #0f172a;
+            border-color: var(--accent-blue);
+            font-weight: 700;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        }
+
+        .st-card-widget {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .st-widget-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .st-ranked-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-height: 190px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .st-rank-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            gap: 6px;
+            cursor: pointer;
+            padding: 3px 6px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .st-rank-row:hover { background: rgba(255,255,255,0.08); }
+        .st-rank-name {
+            width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #cbd5e1;
+        }
+        .st-rank-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .st-rank-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: var(--accent-blue);
+        }
+        .st-rank-val {
+            font-weight: 700;
+            color: #fff;
+            min-width: 48px;
+            text-align: right;
+        }
+
+        .st-alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .st-alert-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(239, 68, 68, 0.12);
+            border-left: 3px solid #ef4444;
+            color: #fca5a5;
+            cursor: pointer;
+        }
+        .st-alert-item.warn {
+            background: rgba(245, 158, 11, 0.12);
+            border-left-color: #f59e0b;
+            color: #fcd34d;
+        }
+
+        .st-station-detail {
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .st-empty-prompt {
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .st-detail-head h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #fff;
+            font-weight: 700;
+        }
+        .st-detail-head p {
+            margin: 2px 0 0 0;
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .st-metric-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .st-metric-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .st-metric-title { font-size: 11px; font-weight: 600; color: #cbd5e1; }
+        .st-metric-curr { font-size: 13px; font-weight: 800; color: var(--accent-blue); }
+        .st-metric-chart svg { width: 100%; height: 55px; overflow: visible; }
+        .st-metric-foot {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #94a3b8;
+        }
+        .st-metric-foot b { color: #f1f5f9; }
+
+        .st-download-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .st-download-box h5 { margin: 0; font-size: 11px; color: #cbd5e1; }
+        .st-date-row {
+            display: flex;
+            gap: 6px;
+        }
+        .st-date-field {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            font-size: 9px;
+            color: #94a3b8;
+            gap: 2px;
+        }
+        .st-date-field input {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            outline: none;
+        }
+        .st-btn-download {
+            background: var(--accent-blue);
+            color: #0f172a;
+            border: none;
+            padding: 7px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: transform 0.15s, background 0.15s;
+        }
+        .st-btn-download:hover { transform: scale(1.02); background: #34d399; }
+
+        /* ── PIN DE ESTACIÓN EN EL MAPA (SIMBOLOGÍA PRO) ── */
+        .st-map-pin {
+            border: 2px solid #ffffff;
+            border-radius: 18px;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 11px;
+            padding: 3px 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .st-map-pin:hover {
+            transform: scale(1.18);
+            box-shadow: 0 0 12px rgba(255,255,255,0.8);
+            z-index: 9999 !important;
+        }
+        .st-map-pin.selected {
+            outline: 3px solid var(--accent-blue);
+            outline-offset: 2px;
+            transform: scale(1.22);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.9);
+        }
+
     </style>
 </head>
 <body>
 
     <!-- MENÚ HAMBURGUESA (CAPAS INAB) -->
-    <div class="hamburger-btn" onclick="toggleDrawer()" title="Capas Institucionales INAB">
+    <div class="hamburger-btn" id="btnToggleDrawer" onclick="toggleDrawer()" title="Capas Institucionales INAB">
         <i class="fa-solid fa-bars"></i>
+    </div>
+
+    <!-- BOTÓN ESTACIONES METEOROLÓGICAS ANACAFE -->
+    <div class="stations-btn" id="btnToggleStations" onclick="toggleStationsDrawer()" title="Red Meteorológica ANACAFE">
+        <i class="fa-solid fa-tower-broadcast"></i>
     </div>
 
     <div class="inab-drawer" id="inabDrawer">
@@ -411,10 +811,62 @@
             <input type="radio" name="baseRadio" onchange="changeBaseMap('topo')">
             <span>Topográfico</span>
         </label>
-        <label class="drawer-checkbox-item">
-            <input type="radio" name="baseRadio" onchange="changeBaseMap('osm')">
-            <span>OpenStreetMap</span>
-        </label>
+
+    </div>
+
+    <!-- CAJÓN DE ESTACIONES METEOROLÓGICAS ANACAFE -->
+    <div class="stations-drawer" id="stationsDrawer">
+        <div class="st-drawer-header">
+            <h4><i class="fa-solid fa-tower-broadcast"></i> Estaciones ANACAFE</h4>
+            <span class="st-close-btn" onclick="toggleStationsDrawer(false)">✕</span>
+        </div>
+
+        <div class="st-status-bar">
+            <span id="stActiveCount" class="st-badge-live"><i class="fa-solid fa-circle"></i> Consultando red...</span>
+            <button class="st-refresh-btn" onclick="refreshAnacafe()"><i class="fa-solid fa-arrows-rotate"></i> Actualizar ahora</button>
+        </div>
+
+        <div class="st-section-title">Variable en Mapa y Gráficos</div>
+        <div class="st-vars-grid" id="stVarsGrid">
+            <button class="st-var-btn active" data-v="temp" onclick="setStationVar('temp')"><i class="fa-solid fa-temperature-half"></i> Temp (°C)</button>
+            <button class="st-var-btn" data-v="lluvia" onclick="setStationVar('lluvia')"><i class="fa-solid fa-cloud-rain"></i> Lluvia (mm)</button>
+            <button class="st-var-btn" data-v="hr" onclick="setStationVar('hr')"><i class="fa-solid fa-droplet"></i> Humedad (%)</button>
+            <button class="st-var-btn" data-v="suelo" onclick="setStationVar('suelo')"><i class="fa-solid fa-mound"></i> Suelo (%)</button>
+            <button class="st-var-btn" data-v="viento" onclick="setStationVar('viento')"><i class="fa-solid fa-wind"></i> Viento (km/h)</button>
+            <button class="st-var-btn" data-v="rad" onclick="setStationVar('rad')"><i class="fa-solid fa-sun"></i> Radiación</button>
+            <button class="st-var-btn" data-v="rocio" onclick="setStationVar('rocio')"><i class="fa-solid fa-cloud-sun"></i> Rocío (°C)</button>
+        </div>
+
+        <!-- Gráfica Top 10 -->
+        <div class="st-card-widget">
+            <div class="st-widget-header" id="stTop10Title"><i class="fa-solid fa-ranking-star" style="color:var(--accent-blue)"></i> Top 10 Temperaturas Más Altas</div>
+            <div class="st-ranked-bars" id="stTop10Container">
+                <div style="font-size:10px; color:#94a3b8; text-align:center; padding:8px;">Cargando estaciones...</div>
+            </div>
+        </div>
+
+        <!-- Alertas Humedad -->
+        <div class="st-card-widget">
+            <div class="st-widget-header"><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i> Alertas por Humedad Crítica</div>
+            <div class="st-alerts-list" id="stHumidityAlerts">
+                <div style="font-size:10px; color:#94a3b8; padding:4px;">Analizando humedad...</div>
+            </div>
+        </div>
+
+        <!-- Alertas Lluvia -->
+        <div class="st-card-widget">
+            <div class="st-widget-header"><i class="fa-solid fa-cloud-showers-heavy" style="color:#38bdf8;"></i> Alertas de Lluvia Intensa (≥ 50 mm / 48 h)</div>
+            <div class="st-alerts-list" id="stRainAlerts">
+                <div style="font-size:10px; color:#94a3b8; padding:4px;">Analizando acumulados...</div>
+            </div>
+        </div>
+
+        <!-- Detalle de Estación Seleccionada -->
+        <div class="st-station-detail" id="stStationDetail">
+            <div class="st-empty-prompt">
+                <i class="fa-solid fa-hand-pointer"></i> Haz clic sobre una estación en el mapa para ver sus métricas y gráficas 48 h.
+            </div>
+        </div>
     </div>
 
     <!-- BARRA DE LEYENDA FLOTANTE (SUPERIOR CENTRO) -->
@@ -422,6 +874,11 @@
         <div class="legend-title" id="legendTitle">Precipitación Diaria CHIRPS (mm)</div>
         <div class="legend-gradient-bar" id="legendGradient"></div>
         <div class="legend-ticks" id="legendTicks"></div>
+        <div class="layer-opacity-box">
+            <span><i class="fa-solid fa-circle-half-stroke"></i> Transparencia:</span>
+            <input type="range" id="layerOpacitySlider" min="10" max="100" value="88" oninput="setLayerOpacity(this.value)">
+            <span id="opacityValLabel">88%</span>
+        </div>
     </div>
 
     <!-- BOTÓN OCULTAR/MOSTRAR PANEL CLIMÁTICO GEE -->
@@ -489,24 +946,24 @@
 
         // 1. DICCIONARIO DE CAPAS GEE (18 URLS OFICIALES)
         const GEE_URLS = {
-            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6592f3eb442d2cf3d6529b125abfa357-9ac4118b368f2534bf87458e33891a27/tiles/{z}/{x}/{y}',
-            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/00d99a2cb835bfe4e01bfd77c844bcf8-78feb91829a24bf461d32a0ead6c5867/tiles/{z}/{x}/{y}',
-            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/b60097da1464e5e8f50aae2cdb04c66e-cc69d213f0c27cb09c9a7ca3de411b4a/tiles/{z}/{x}/{y}',
-            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/bf8d15fa4eea59878a43c2d3e08b4df1-95b9aa2187810edffebea107bb5c7b5a/tiles/{z}/{x}/{y}',
-            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3a281474e908a05472f2336954e42a11-82ebac37599610cf5648c7c151a85a06/tiles/{z}/{x}/{y}',
-            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/84c2149faba946058da5a998aa576985-7fa1c6916b8d8b2dcac0e10abd44b9a7/tiles/{z}/{x}/{y}',
-            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5f0625bcf754b070a8a0bf7dd054e502-ebba6ad1f2c260a292c48dcb7b379319/tiles/{z}/{x}/{y}',
-            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/92beeb194a91ead83d5e883728d4fc86-062613538b78459dd8725798b26de1c0/tiles/{z}/{x}/{y}',
-            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c6803d65e585c8864493de4d51170df5-690944157b9a7d1e976abc8735d6eaed/tiles/{z}/{x}/{y}',
-            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/2cf26cf76ce86834ada2c60f000f286d-cb69eb2fcc0ffb9cbcc04d62700220e6/tiles/{z}/{x}/{y}',
-            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/24e2659eab7236bd5d6e028934b9f42c-d58badaf86fcbeb21f493ad0f9cb7f36/tiles/{z}/{x}/{y}',
-            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/72787313464b8b532f0e236e629f084c-b1453fc26d3691b21de3b08f44733994/tiles/{z}/{x}/{y}',
-            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/33e929d6416269c97fbd5131bac677cd-639faf8d41dc412785ea4fd149880682/tiles/{z}/{x}/{y}',
-            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/933c99c46c899e45da91dc6500c62bca-274a5063e37569d16db9aed693e11a46/tiles/{z}/{x}/{y}',
-            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8882fd5fed0e4b5a8bac9c7f530da378-f4567b7a85e5b54524b4bc7855f03592/tiles/{z}/{x}/{y}',
-            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5b5e60c58781e7c7c596a1d3bfe67ee1-096d229ec3777a7febcbebff8571349d/tiles/{z}/{x}/{y}',
-            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/65295898a788568e9bacf763749425c7-57f6c24fd7fab2fa09d3d86f10beeb52/tiles/{z}/{x}/{y}',
-            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3b9815f614c54e65e8aaa200f3e63faa-9a706569ceef603c1833358bef5b83f4/tiles/{z}/{x}/{y}'
+            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f7c4423e21021d62923f305c87c7132e-4f798a123a84e2a9683588118f17375c/tiles/{z}/{x}/{y}',
+            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/acbbb2e4d7113ed48212df5da5433e50-c50cc912014f7873458fa306c43ada8a/tiles/{z}/{x}/{y}',
+            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6e86b2edf8a7ce0f9c9ebf04e1149d30-6c73cdd434660510b2371380a6fdc88d/tiles/{z}/{x}/{y}',
+            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/b1efa5d6a3f28f1fdaafdaafc06cfc7a-6f4121aa96f8c8e39281b2142d4e9550/tiles/{z}/{x}/{y}',
+            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/66a62663b2f072da10cc2d558ec2ec42-5881100ed30ea513181b8977bcb711a3/tiles/{z}/{x}/{y}',
+            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/41978bb3bc0c3dde35d541d9fe610f5a-abc710c9fd00f1e0d676d5dffb735d05/tiles/{z}/{x}/{y}',
+            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/582eeb66371c8b04d26430b4b0fa1ce5-c42fe6e9ceb52a668a7d7bde0b0fe35e/tiles/{z}/{x}/{y}',
+            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/89f78314999eade7fc23bbd7bd2887e2-36961e683587bc045a65f4a431e7cf5f/tiles/{z}/{x}/{y}',
+            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8c0802dfeeb69b6a5e60ebfe6c5a6c88-0540326ca011d1b4d185f4c7a20057bc/tiles/{z}/{x}/{y}',
+            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/404d1beb29e4ef22aea1d91c15ab362d-9aa63dbe1f6267b8cbe5141f0dbd66a1/tiles/{z}/{x}/{y}',
+            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6ac592bb651c854998b513c0fffae6d0-7f793953f779e34c6999f84a57836fa0/tiles/{z}/{x}/{y}',
+            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f862817014e7cb7ba02006758841dc51-148827aab47511537e62e7440fc0298b/tiles/{z}/{x}/{y}',
+            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3efbfdc455b325ae144be7f2d97459f9-969fff23281d152ca6b37b6d003ea1bd/tiles/{z}/{x}/{y}',
+            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8f780f3755ad80189228e655fd3e29d2-eb8aa01d28cd628d3982d8620ca12bb5/tiles/{z}/{x}/{y}',
+            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5ced6724ebdbc145a3c583fba5548a2a-8efcafea13aceeb2f03ef25c1a7be632/tiles/{z}/{x}/{y}',
+            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/e38b1ce339df550ba5cf5580fbb4cd8e-163133da2cf45219889f9bd1d79ccb5c/tiles/{z}/{x}/{y}',
+            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/b4ebc28e57672bc81996294c55b4c580-f5ff03a3ddad547db356dcd5660746cc/tiles/{z}/{x}/{y}',
+            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6af030875b0899c7e1f83f46616ef82c-9b50e1a0893dfd21e7a5a467bd357cec/tiles/{z}/{x}/{y}'
         };
 
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
@@ -557,8 +1014,7 @@
         // 4. MAPAS BASE
         const baseLayers = {
             sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map),
-            topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
-            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+            topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
         };
 
         // 5. CAPAS INAB ARCGIS
@@ -719,7 +1175,7 @@
             
             activeGeeKey = key;
             currentGeeLayer = L.tileLayer(GEE_URLS[key], { 
-                opacity: 0.88, 
+                opacity: currentLayerOpacity, 
                 maxZoom: 19,
                 className: 'gee-tile-layer'
             }).addTo(map);
@@ -756,8 +1212,25 @@
         }
 
         // 9. MENÚ HAMBURGUESA Y CAPAS INAB
-        function toggleDrawer() {
-            document.getElementById('inabDrawer').classList.toggle('open');
+        function toggleDrawer(forceState) {
+            const drawer = document.getElementById('inabDrawer');
+            const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
+            if (shouldOpen) {
+                toggleStationsDrawer(false); // Evitar traslape cerrando estaciones
+            }
+            drawer.classList.toggle('open', shouldOpen);
+        }
+
+        function toggleStationsDrawer(forceState) {
+            const drawer = document.getElementById('stationsDrawer');
+            const btn = document.getElementById('btnToggleStations');
+            const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
+            if (shouldOpen) {
+                toggleDrawer(false); // Evitar traslape cerrando capas INAB
+                document.getElementById('forecast-panel').style.display = 'none';
+            }
+            drawer.classList.toggle('open', shouldOpen);
+            btn.classList.toggle('active', shouldOpen);
         }
 
         function toggleGeeSidebar() {
@@ -942,6 +1415,601 @@
                 grid.innerHTML = '<div style="color:#ef4444; padding:10px; font-size:12px;">Error al consultar el pronóstico</div>';
             }
         }
+
+        // ── 11. CONTROL DE OPACIDAD DE CAPAS CLIMÁTICAS GEE ──
+        let currentLayerOpacity = 0.88;
+        function setLayerOpacity(val) {
+            currentLayerOpacity = val / 100;
+            document.getElementById('opacityValLabel').textContent = val + '%';
+            if (currentGeeLayer) {
+                currentGeeLayer.setOpacity(currentLayerOpacity);
+            }
+        }
+
+        // ── 12. RED METEOROLÓGICA ANACAFE (INTEGRACIÓN COMPLETA EN VIVO) ──
+        const ANACAFE_API = 'https://meteorologia.anacafe.org/servicios/api.php?op=obs';
+        const stationsLayerGroup = L.layerGroup().addTo(map);
+
+        const ST_VARS_DEF = {
+            temp: { name: 'Temperatura', unit: '°C', dec: 1, topTitle: 'Top 10 Temperaturas Más Altas' },
+            lluvia: { name: 'Precipitación (48 h)', unit: 'mm', dec: 1, topTitle: 'Top 10 Mayor Precipitación Acumulada' },
+            hr: { name: 'Humedad Relativa', unit: '%', dec: 0, topTitle: 'Top 10 Mayor Humedad Relativa' },
+            suelo: { name: 'Humedad de Suelo', unit: '%', dec: 1, topTitle: 'Top 10 Humedad de Suelo' },
+            viento: { name: 'Viento', unit: 'km/h', dec: 1, topTitle: 'Top 10 Mayor Velocidad de Viento' },
+            rad: { name: 'Radiación Solar', unit: 'W/m²', dec: 0, topTitle: 'Top 10 Mayor Radiación Solar' },
+            rocio: { name: 'Punto de Rocío', unit: '°C', dec: 1, topTitle: 'Top 10 Punto de Rocío Más Alto' }
+        };
+
+        function getStationColor(vKey, val) {
+            if (val === null || isNaN(val)) return '#64748b';
+            if (vKey === 'temp') {
+                if (val < 14) return '#3b82f6';
+                if (val < 18) return '#06b6d4';
+                if (val < 22) return '#22c55e';
+                if (val < 26) return '#eab308';
+                if (val < 30) return '#f97316';
+                return '#ef4444';
+            }
+            if (vKey === 'lluvia') {
+                if (val <= 0.1) return '#64748b';
+                if (val < 5) return '#38bdf8';
+                if (val < 20) return '#2563eb';
+                if (val < 50) return '#7c3aed';
+                return '#dc2626';
+            }
+            if (vKey === 'hr') {
+                if (val < 60) return '#64748b';
+                if (val < 75) return '#38bdf8';
+                if (val < 90) return '#2563eb';
+                return '#1e3a8a';
+            }
+            if (vKey === 'suelo') {
+                if (val < 15) return '#8c510a';
+                if (val < 25) return '#d8b365';
+                return '#01665e';
+            }
+            if (vKey === 'viento') {
+                if (val < 5) return '#38bdf8';
+                if (val < 15) return '#22c55e';
+                if (val < 25) return '#f97316';
+                return '#ef4444';
+            }
+            if (vKey === 'rad') {
+                if (val < 100) return '#64748b';
+                if (val < 400) return '#eab308';
+                return '#f97316';
+            }
+            if (vKey === 'rocio') {
+                if (val < 10) return '#ef4444';
+                if (val < 18) return '#eab308';
+                return '#22c55e';
+            }
+            return '#38bdf8';
+        }
+
+        let stList = [];
+        let stActiveVar = 'temp';
+        let stSelectedId = null;
+
+        function setStationVar(vKey) {
+            stActiveVar = vKey;
+            document.querySelectorAll('#stVarsGrid .st-var-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-v') === vKey);
+            });
+            renderStationPins();
+            renderTop10();
+        }
+
+        async function initAnacafe() {
+            try {
+                document.getElementById('stActiveCount').innerHTML = '<i class="fa-solid fa-circle"></i> Descargando catálogo ANACAFE...';
+                const r = await fetch(ANACAFE_API, { cache: 'no-store' });
+                if (!r.ok) throw new Error('Error al conectar con API ANACAFE');
+                const json = await r.json();
+                const rawStations = json.mensual || [];
+                
+                stList = rawStations.map(s => ({
+                    id: String(s.IdEstacion),
+                    nombre: s.Nombre || 'Estación ' + s.IdEstacion,
+                    lat: parseFloat(s.Latitud),
+                    lon: parseFloat(s.Longitud),
+                    muni: s.Municipio || '',
+                    mediciones: null,
+                    series: null
+                })).filter(s => !isNaN(s.lat) && !isNaN(s.lon));
+
+                loadAllStationsObservations();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('stActiveCount').innerHTML = '<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Error al cargar ANACAFE</span>';
+            }
+        }
+
+        async function loadAllStationsObservations() {
+            const now = new Date();
+            const d2 = now.toISOString().split('T')[0];
+            const d1Obj = new Date(Date.now() - 48 * 3600 * 1000);
+            const d1 = d1Obj.toISOString().split('T')[0];
+
+            let loadedCount = 0;
+            let activeCount = 0;
+
+            const poolSize = 8;
+            let idx = 0;
+
+            async function worker() {
+                while (idx < stList.length) {
+                    const i = idx++;
+                    const s = stList[i];
+                    try {
+                        const url = `${ANACAFE_API}&id=${s.id}&fecha1=${d1}&fecha2=${d2}`;
+                        const res = await fetch(url, { cache: 'no-store' });
+                        if (res.ok) {
+                            const data = await res.json();
+                            const obs = data.obs || {};
+                            if (obs.hora && obs.hora.length > 0) {
+                                const n = obs.hora.length;
+                                const lastValid = (arr) => {
+                                    if (!arr) return null;
+                                    for (let k = arr.length - 1; k >= 0; k--) {
+                                        const v = parseFloat(String(arr[k]).replace(',', '.'));
+                                        if (!isNaN(v)) return v;
+                                    }
+                                    return null;
+                                };
+
+                                const sumArr = (arr) => {
+                                    if (!arr) return 0;
+                                    return arr.reduce((acc, x) => {
+                                        const v = parseFloat(String(x).replace(',', '.'));
+                                        return acc + (!isNaN(v) ? v : 0);
+                                    }, 0);
+                                };
+
+                                const lastT = lastValid(obs.temperatura);
+                                const lastH = lastValid(obs.humedad);
+                                const rainTotal = sumArr(obs.lluvia);
+                                const lastW = lastValid(obs.vientoV);
+                                const lastR = lastValid(obs.radiacion);
+                                const lastDew = lastValid(obs.rocio);
+                                const lastSoil = lastValid(obs.suelo);
+
+                                s.mediciones = {
+                                    temp: lastT,
+                                    hr: lastH,
+                                    lluvia: rainTotal,
+                                    viento: lastW,
+                                    rad: lastR,
+                                    rocio: lastDew,
+                                    suelo: lastSoil,
+                                    lastDate: obs.dia ? obs.dia[n - 1] : '',
+                                    lastHour: obs.hora ? obs.hora[n - 1] : ''
+                                };
+
+                                s.series = {
+                                    time: (obs.hora || []).map((h, k) => (obs.dia ? obs.dia[k] : '') + ' ' + h),
+                                    temp: (obs.temperatura || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    hr: (obs.humedad || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    lluvia: (obs.lluvia || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    viento: (obs.vientoV || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    rad: (obs.radiacion || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    rocio: (obs.rocio || []).map(v => parseFloat(String(v).replace(',', '.'))),
+                                    suelo: (obs.suelo || []).map(v => parseFloat(String(v).replace(',', '.')))
+                                };
+
+                                if (lastT !== null || lastH !== null || rainTotal > 0) {
+                                    activeCount++;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Omitir error individual
+                    }
+                    loadedCount++;
+                    if (loadedCount % 15 === 0 || loadedCount === stList.length) {
+                        document.getElementById('stActiveCount').innerHTML = `<i class="fa-solid fa-circle"></i> ${activeCount} estaciones en línea (${loadedCount}/${stList.length})`;
+                        renderStationPins();
+                        renderTop10();
+                        renderAlerts();
+                    }
+                }
+            }
+
+            const workers = Array.from({ length: poolSize }, () => worker());
+            await Promise.all(workers);
+
+            document.getElementById('stActiveCount').innerHTML = `<i class="fa-solid fa-circle"></i> ${activeCount} estaciones activas (reportando en vivo)`;
+            renderStationPins();
+            renderTop10();
+            renderAlerts();
+        }
+
+        function refreshAnacafe() {
+            loadAllStationsObservations();
+        }
+
+        function renderStationPins() {
+            stationsLayerGroup.clearLayers();
+            const vDef = ST_VARS_DEF[stActiveVar];
+
+            stList.forEach(s => {
+                if (!s.mediciones) return;
+                const val = s.mediciones[stActiveVar];
+                if (val === null || isNaN(val)) return;
+
+                const color = getStationColor(stActiveVar, val);
+                const displayVal = val.toFixed(vDef.dec);
+                const isSelected = s.id === stSelectedId;
+
+                const pinHtml = `<div class="st-map-pin ${isSelected ? 'selected' : ''}" style="background:${color}">${displayVal}</div>`;
+                const pinIcon = L.divIcon({
+                    className: '',
+                    html: pinHtml,
+                    iconSize: [44, 24],
+                    iconAnchor: [22, 12]
+                });
+
+                const marker = L.marker([s.lat, s.lon], { icon: pinIcon, title: s.nombre });
+                marker.on('click', () => {
+                    selectStation(s.id);
+                });
+                marker.addTo(stationsLayerGroup);
+            });
+        }
+
+        function renderTop10() {
+            const vDef = ST_VARS_DEF[stActiveVar];
+            document.getElementById('stTop10Title').innerHTML = `<i class="fa-solid fa-ranking-star" style="color:var(--accent-blue)"></i> ${vDef.topTitle}`;
+
+            const validStations = stList.filter(s => s.mediciones && s.mediciones[stActiveVar] !== null && !isNaN(s.mediciones[stActiveVar]));
+            validStations.sort((a, b) => b.mediciones[stActiveVar] - a.mediciones[stActiveVar]);
+            const top10 = validStations.slice(0, 10);
+
+            const container = document.getElementById('stTop10Container');
+            if (top10.length === 0) {
+                container.innerHTML = '<div style="font-size:10px; color:#94a3b8; text-align:center; padding:8px;">Sin datos suficientes</div>';
+                return;
+            }
+
+            const maxVal = Math.max(...top10.map(s => s.mediciones[stActiveVar]), 0.001);
+
+            let html = '';
+            top10.forEach((s, idx) => {
+                const val = s.mediciones[stActiveVar];
+                const pct = Math.max(10, Math.min(100, (val / maxVal) * 100));
+                const color = getStationColor(stActiveVar, val);
+                html += `
+                    <div class="st-rank-row" onclick="selectStation('${s.id}')">
+                        <span style="font-weight:700; width:16px; color:#94a3b8;">${idx + 1}.</span>
+                        <span class="st-rank-name" title="${s.nombre}">${s.nombre}</span>
+                        <div class="st-rank-bar-bg">
+                            <div class="st-rank-bar-fill" style="width:${pct}%; background:${color};"></div>
+                        </div>
+                        <span class="st-rank-val">${val.toFixed(vDef.dec)} ${vDef.unit}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderAlerts() {
+            // Alertas Humedad
+            const humAlerts = stList.filter(s => s.mediciones && s.mediciones.hr !== null && (s.mediciones.hr >= 95 || s.mediciones.hr <= 35));
+            const humContainer = document.getElementById('stHumidityAlerts');
+            if (humAlerts.length === 0) {
+                humContainer.innerHTML = '<div style="font-size:10px; color:#4ade80; padding:4px;"><i class="fa-solid fa-circle-check"></i> Humedad en rangos normales en toda la red</div>';
+            } else {
+                let hHtml = '';
+                humAlerts.slice(0, 8).forEach(s => {
+                    const isHigh = s.mediciones.hr >= 95;
+                    const tag = isHigh ? 'Saturación extrema' : 'Sequedad extrema';
+                    const cls = isHigh ? 'warn' : '';
+                    hHtml += `
+                        <div class="st-alert-item ${cls}" onclick="selectStation('${s.id}')">
+                            <span><b>${s.nombre}</b> (${tag})</span>
+                            <b>${s.mediciones.hr.toFixed(0)}%</b>
+                        </div>
+                    `;
+                });
+                humContainer.innerHTML = hHtml;
+            }
+
+            // Alertas Lluvia (>= 50 mm)
+            const rainAlerts = stList.filter(s => s.mediciones && s.mediciones.lluvia >= 50);
+            rainAlerts.sort((a, b) => b.mediciones.lluvia - a.mediciones.lluvia);
+            const rainContainer = document.getElementById('stRainAlerts');
+            if (rainAlerts.length === 0) {
+                rainContainer.innerHTML = '<div style="font-size:10px; color:#94a3b8; padding:4px;"><i class="fa-solid fa-check"></i> Sin alertas activas de lluvia torrencial (< 50 mm en 48 h)</div>';
+            } else {
+                let rHtml = '';
+                rainAlerts.slice(0, 8).forEach(s => {
+                    rHtml += `
+                        <div class="st-alert-item" onclick="selectStation('${s.id}')">
+                            <span><b>${s.nombre}</b> (Lluvia acumulada)</span>
+                            <b>${s.mediciones.lluvia.toFixed(1)} mm</b>
+                        </div>
+                    `;
+                });
+                rainContainer.innerHTML = rHtml;
+            }
+        }
+
+        function createSparklineSvg(seriesArr, color, isBar) {
+            if (!seriesArr || seriesArr.length < 2) return '<div style="color:#64748b; font-size:10px; text-align:center;">Sin datos suficientes</div>';
+            const valid = seriesArr.filter(v => v !== null && !isNaN(v));
+            if (valid.length < 2) return '<div style="color:#64748b; font-size:10px; text-align:center;">Sin datos suficientes</div>';
+
+            const W = 320, H = 55, pad = 6;
+            let min = Math.min(...valid);
+            let max = Math.max(...valid);
+            if (isBar) { min = 0; max = Math.max(max, 1); }
+            else if (max - min < 0.1) { max += 1; min -= 1; }
+
+            const n = seriesArr.length;
+            const pts = [];
+            seriesArr.forEach((val, i) => {
+                if (val !== null && !isNaN(val)) {
+                    const x = pad + (i / (n - 1)) * (W - 2 * pad);
+                    const y = H - pad - ((val - min) / (max - min)) * (H - 2 * pad);
+                    pts.push([x, y]);
+                }
+            });
+
+            if (pts.length < 2) return '';
+
+            const pointsStr = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+            const first = pts[0];
+            const last = pts[pts.length - 1];
+            const areaStr = `${first[0]},${H} ${pointsStr} ${last[0]},${H}`;
+
+            let svgContent = '';
+            if (isBar) {
+                const bw = Math.max(2, (W - 2 * pad) / n - 1);
+                svgContent = pts.map(p => `<rect x="${(p[0] - bw / 2).toFixed(1)}" y="${p[1].toFixed(1)}" width="${bw}" height="${(H - p[1]).toFixed(1)}" fill="${color}" opacity="0.85"/>`).join('');
+            } else {
+                svgContent = `
+                    <polygon points="${areaStr}" fill="${color}" opacity="0.15"/>
+                    <polyline points="${pointsStr}" fill="none" stroke="${color}" stroke-width="2"/>
+                    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="#f472b6"/>
+                `;
+            }
+
+            return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${svgContent}</svg>`;
+        }
+
+        function selectStation(id) {
+            stSelectedId = id;
+            const s = stList.find(x => x.id === id);
+            if (!s) return;
+
+            // Abrir cajón de estaciones si está cerrado
+            toggleStationsDrawer(true);
+
+            // Resaltar pin en el mapa
+            renderStationPins();
+
+            // Centrar mapa suavemente
+            map.flyTo([s.lat, s.lon], 11, { duration: 1.2 });
+
+            const m = s.mediciones || {};
+            const ser = s.series || {};
+
+            const calcStats = (arr) => {
+                if (!arr || !arr.length) return { min: 0, avg: 0, max: 0 };
+                const v = arr.filter(x => x !== null && !isNaN(x));
+                if (!v.length) return { min: 0, avg: 0, max: 0 };
+                const min = Math.min(...v);
+                const max = Math.max(...v);
+                const avg = v.reduce((a, b) => a + b, 0) / v.length;
+                return { min, avg, max };
+            };
+
+            const tStats = calcStats(ser.temp);
+            const hStats = calcStats(ser.hr);
+            const wStats = calcStats(ser.viento);
+            const rStats = calcStats(ser.rad);
+            const dStats = calcStats(ser.rocio);
+            const sStats = calcStats(ser.suelo);
+
+            const rainValid = (ser.lluvia || []).filter(x => x !== null && !isNaN(x));
+            const rainSum = rainValid.reduce((a, b) => a + b, 0);
+            const rainMax = rainValid.length ? Math.max(...rainValid) : 0;
+            const rainEvents = rainValid.filter(x => x > 0).length;
+
+            const now = new Date();
+            const d2 = now.toISOString().split('T')[0];
+            const d1Obj = new Date(Date.now() - 48 * 3600 * 1000);
+            const d1 = d1Obj.toISOString().split('T')[0];
+
+            const detailHtml = `
+                <div class="st-detail-head">
+                    <h3>${s.nombre}</h3>
+                    <p>ID: ${s.id} · Lat: ${s.lat.toFixed(4)}, Lon: ${s.lon.toFixed(4)} ${s.muni ? '· ' + s.muni : ''}</p>
+                </div>
+
+                <!-- 1. Temperatura -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-temperature-half"></i> Temperatura</span>
+                        <span class="st-metric-curr">${m.temp !== null && m.temp !== undefined ? m.temp.toFixed(1) + ' °C' : '—'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.temp, '#38bdf8', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${tStats.min.toFixed(1)} °C</b></span>
+                        <span>Prom <b>${tStats.avg.toFixed(1)} °C</b></span>
+                        <span>Máx <b>${tStats.max.toFixed(1)} °C</b></span>
+                    </div>
+                </div>
+
+                <!-- 2. Humedad Relativa -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-droplet"></i> Humedad Relativa</span>
+                        <span class="st-metric-curr">${m.hr !== null && m.hr !== undefined ? m.hr.toFixed(0) + ' %' : '—'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.hr, '#06b6d4', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${hStats.min.toFixed(0)} %</b></span>
+                        <span>Prom <b>${hStats.avg.toFixed(0)} %</b></span>
+                        <span>Máx <b>${hStats.max.toFixed(0)} %</b></span>
+                    </div>
+                </div>
+
+                <!-- 3. Precipitación (por registro) -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-cloud-rain"></i> Precipitación (48 h)</span>
+                        <span class="st-metric-curr" style="color:#38bdf8">Total ${rainSum.toFixed(1)} mm</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.lluvia, '#38bdf8', true)}</div>
+                    <div class="st-metric-foot">
+                        <span>Total <b>${rainSum.toFixed(1)} mm</b></span>
+                        <span>Máx <b>${rainMax.toFixed(1)} mm</b></span>
+                        <span>Con lluvia <b>${rainEvents}</b></span>
+                    </div>
+                </div>
+
+                <!-- 4. Viento -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-wind"></i> Velocidad del Viento</span>
+                        <span class="st-metric-curr">${m.viento !== null && m.viento !== undefined ? m.viento.toFixed(1) + ' km/h' : '—'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.viento, '#22c55e', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${wStats.min.toFixed(1)}</b></span>
+                        <span>Prom <b>${wStats.avg.toFixed(1)}</b></span>
+                        <span>Máx <b>${wStats.max.toFixed(1)}</b></span>
+                    </div>
+                </div>
+
+                <!-- 5. Radiación Solar -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-sun"></i> Radiación Solar</span>
+                        <span class="st-metric-curr">${m.rad !== null && m.rad !== undefined ? m.rad.toFixed(0) + ' W/m²' : '—'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.rad, '#f59e0b', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${rStats.min.toFixed(0)}</b></span>
+                        <span>Prom <b>${rStats.avg.toFixed(0)}</b></span>
+                        <span>Máx <b>${rStats.max.toFixed(0)}</b></span>
+                    </div>
+                </div>
+
+                <!-- 6. Punto de Rocío -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-cloud-sun"></i> Punto de Rocío</span>
+                        <span class="st-metric-curr">${m.rocio !== null && m.rocio !== undefined ? m.rocio.toFixed(1) + ' °C' : '—'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.rocio, '#06b6d4', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${dStats.min.toFixed(1)} °C</b></span>
+                        <span>Prom <b>${dStats.avg.toFixed(1)} °C</b></span>
+                        <span>Máx <b>${dStats.max.toFixed(1)} °C</b></span>
+                    </div>
+                </div>
+
+                <!-- 7. Humedad de Suelo -->
+                <div class="st-metric-card">
+                    <div class="st-metric-top">
+                        <span class="st-metric-title"><i class="fa-solid fa-mound"></i> Humedad de Suelo</span>
+                        <span class="st-metric-curr">${m.suelo !== null && m.suelo !== undefined ? m.suelo.toFixed(1) + ' %' : '0.0 %'}</span>
+                    </div>
+                    <div class="st-metric-chart">${createSparklineSvg(ser.suelo, '#10b981', false)}</div>
+                    <div class="st-metric-foot">
+                        <span>Mín <b>${sStats.min.toFixed(1)}</b></span>
+                        <span>Prom <b>${sStats.avg.toFixed(1)}</b></span>
+                        <span>Máx <b>${sStats.max.toFixed(1)}</b></span>
+                    </div>
+                </div>
+
+                <!-- Descarga CSV -->
+                <div class="st-download-box">
+                    <h5><i class="fa-solid fa-file-csv"></i> Descargar datos de la estación</h5>
+                    <div class="st-date-row">
+                        <div class="st-date-field">
+                            <label>Desde:</label>
+                            <input type="date" id="stCsvD1" value="${d1}">
+                        </div>
+                        <div class="st-date-field">
+                            <label>Hasta:</label>
+                            <input type="date" id="stCsvD2" value="${d2}">
+                        </div>
+                    </div>
+                    <button class="st-btn-download" onclick="downloadSelectedStationCsv('${s.id}')">
+                        <i class="fa-solid fa-download"></i> Descargar CSV
+                    </button>
+                    <div id="stCsvStatus" style="font-size:10px; color:#38bdf8; text-align:center;"></div>
+                </div>
+            `;
+
+            document.getElementById('stStationDetail').innerHTML = detailHtml;
+            // Scroll suave hacia abajo del detalle
+            document.getElementById('stStationDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function downloadSelectedStationCsv(id) {
+            const s = stList.find(x => x.id === id);
+            if (!s) return;
+
+            const d1 = document.getElementById('stCsvD1').value;
+            const d2 = document.getElementById('stCsvD2').value;
+            const statusEl = document.getElementById('stCsvStatus');
+            statusEl.textContent = 'Descargando mediciones desde ANACAFE...';
+
+            try {
+                const url = `${ANACAFE_API}&id=${id}&fecha1=${d1}&fecha2=${d2}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Error al descargar');
+                const data = await res.json();
+                const obs = data.obs || {};
+
+                if (!obs.dia || !obs.dia.length) {
+                    statusEl.textContent = 'No hay registros en ese rango de fechas.';
+                    return;
+                }
+
+                const lines = ['Estacion,ID,Fecha,Hora,Temperatura_C,Humedad_pct,Precipitacion_mm,Viento_kmh,Radiacion_wm2,Rocio_C,Suelo_pct'];
+                for (let k = 0; k < obs.dia.length; k++) {
+                    const row = [
+                        `"${s.nombre}"`,
+                        s.id,
+                        obs.dia[k] || '',
+                        obs.hora[k] || '',
+                        obs.temperatura ? obs.temperatura[k] : '',
+                        obs.humedad ? obs.humedad[k] : '',
+                        obs.lluvia ? obs.lluvia[k] : '',
+                        obs.vientoV ? obs.vientoV[k] : '',
+                        obs.radiacion ? obs.radiacion[k] : '',
+                        obs.rocio ? obs.rocio[k] : '',
+                        obs.suelo ? obs.suelo[k] : ''
+                    ];
+                    lines.push(row.join(','));
+                }
+
+                const csvBlob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                const csvUrl = URL.createObjectURL(csvBlob);
+                const a = document.createElement('a');
+                a.href = csvUrl;
+                a.download = `ANACAFE_${s.id}_${s.nombre.replace(/\s+/g, '_')}_${d1}_${d2}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(csvUrl);
+
+                statusEl.textContent = '✓ Archivo CSV descargado con éxito.';
+            } catch (err) {
+                statusEl.textContent = 'Error al exportar CSV.';
+            }
+        }
+
+        // Iniciar carga de ANACAFE al cargar la página
+        setTimeout(() => {
+            initAnacafe();
+        }, 800);
+
     </script>
 </body>
 </html>
