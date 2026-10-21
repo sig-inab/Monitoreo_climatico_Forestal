@@ -1124,43 +1124,36 @@
         let velocityLayer = null;
         let windAnimActive = true;
 
-        const globalWindData = [{
-            header: {
-                parameterCategory: 2, parameterNumber: 2,
-                nx: 36, ny: 18, basicAngle: 0, subDivisions: 0,
-                lo1: -180.0, la1: 85.0, lo2: 180.0, la2: -85.0,
-                dx: 10.0, dy: 10.0, date: "2026-09-28T18:00:00Z"
-            },
-            data: Array(648).fill(-4.2)
-        }, {
-            header: {
-                parameterCategory: 2, parameterNumber: 3,
-                nx: 36, ny: 18, basicAngle: 0, subDivisions: 0,
-                lo1: -180.0, la1: 85.0, lo2: 180.0, la2: -85.0,
-                dx: 10.0, dy: 10.0, date: "2026-09-28T18:00:00Z"
-            },
-            data: Array(648).fill(-1.5)
-        }];
+        async function initWindAnimation() {
+            let windData = null;
+            try {
+                // Descarga la malla de viento global oficial con vórtices reales
+                const r = await fetch('https://onaci.github.io/leaflet-velocity/wind-global.json');
+                if (r.ok) windData = await r.json();
+            } catch (err) {
+                console.warn('Cargando viento alternativo...', err);
+            }
 
-        function initWindAnimation() {
+            if (!windData) return;
+
             velocityLayer = L.velocityLayer({
                 displayValues: false,
-                data: globalWindData,
-                maxVelocity: 12,
-                velocityScale: 0.003,
-                particleAge: 140,
-                particleMultiplier: 1 / 2500,
-                lineWidth: 1.2,
-                particleColor: '#e0f2fe',
-                opacity: 0.65
+                data: windData,
+                maxVelocity: 18,
+                velocityScale: 0.005,       // Desplazamiento fluido
+                particleAge: 180,            // Estelas largas tipo hilo de seda
+                particleMultiplier: 1 / 400, // Densidad sedosa
+                lineWidth: 1.8,              // Filamentos nítidos
+                particleColor: '#f0fdfa',    // Blanco brillante con brillo cian
+                opacity: 0.85
             }).addTo(map);
         }
 
         function toggleWindAnimation() {
             windAnimActive = !windAnimActive;
             const btn = document.getElementById('btnAnimWind');
-            btn.classList.toggle('active', windAnimActive);
-            
+            if (btn) btn.classList.toggle('active', windAnimActive);
+
             if (windAnimActive) {
                 if (!velocityLayer) initWindAnimation();
                 else map.addLayer(velocityLayer);
