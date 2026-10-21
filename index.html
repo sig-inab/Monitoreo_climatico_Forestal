@@ -732,7 +732,8 @@
         }
         .st-btn-download:hover { transform: scale(1.02); background: #34d399; }
 
-        /* ── PIN DE ESTACIÓN EN EL MAPA (SIMBOLOGÍA PRO) ── */
+
+        /* ── PIN DE ESTACIÓN EN EL MAPA (SIMBOLOGÍA PRO CON ESCALA DINÁMICA POR ZOOM) ── */
         .st-map-pin {
             border: 2px solid #ffffff;
             border-radius: 18px;
@@ -746,7 +747,7 @@
             justify-content: center;
             white-space: nowrap;
             cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, width 0.2s ease, height 0.2s ease;
         }
         .st-map-pin:hover {
             transform: scale(1.18);
@@ -758,6 +759,49 @@
             outline-offset: 2px;
             transform: scale(1.22);
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.9);
+        }
+
+        /* ── ESCALA DINÁMICA POR NIVEL DE ZOOM ── */
+        /* Zoom Nacional (<= 7): Puntos compactos (no obstruyen el mapa) */
+        #map.zoom-low .st-map-pin {
+            width: 8px !important;
+            height: 8px !important;
+            min-width: 8px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            font-size: 0 !important;
+            border: 1.5px solid #ffffff !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.6) !important;
+            margin-left: 18px;
+            margin-top: 8px;
+        }
+
+        /* Zoom Regional (8): Puntos medianos */
+        #map.zoom-mid .st-map-pin {
+            width: 12px !important;
+            height: 12px !important;
+            min-width: 12px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            font-size: 0 !important;
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6) !important;
+            margin-left: 16px;
+            margin-top: 6px;
+        }
+
+        /* Al pasar el cursor en cualquier zoom, el punto se expande temporalmente mostrando el valor */
+        #map.zoom-low .st-map-pin:hover,
+        #map.zoom-mid .st-map-pin:hover {
+            width: auto !important;
+            height: auto !important;
+            min-width: unset !important;
+            padding: 3px 8px !important;
+            border-radius: 18px !important;
+            font-size: 11px !important;
+            margin-left: 0;
+            margin-top: 0;
+            z-index: 99999 !important;
         }
 
     </style>
@@ -1004,6 +1048,19 @@
 
         // Reubicar controles de Zoom en la esquina inferior derecha
         L.control.zoom({ position: 'bottomright' }).addTo(map);
+        
+        // Ajustar escala dinámica de la simbología según el nivel de zoom
+        function updateMapZoomClass() {
+            const z = map.getZoom();
+            const mapEl = document.getElementById('map');
+            if (mapEl) {
+                mapEl.classList.toggle('zoom-low', z <= 7);
+                mapEl.classList.toggle('zoom-mid', z === 8);
+                mapEl.classList.toggle('zoom-high', z >= 9);
+            }
+        }
+        map.on('zoomend', updateMapZoomClass);
+        updateMapZoomClass();
 
         // 3. CAPA DE RELIEVE 3D HILLSHADE (ESRI WORLD HILLSHADE - GRATUITO Y RÁPIDO)
         const hillshadeLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
