@@ -463,6 +463,59 @@
             background: #0369a1;
         }
 
+        /* ── PANEL DE CICLONES TROPICALES ── */
+        .hurricane-drawer {
+            position: absolute;
+            top: 125px;
+            left: 20px;
+            z-index: 1000;
+            background: var(--bg-dark);
+            color: #fff;
+            width: 340px;
+            max-width: 92vw;
+            max-height: calc(100vh - 150px);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border-glass);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        .hurricane-drawer.open { display: flex; }
+        .hur-status { font-size: 11px; color: #94a3b8; }
+        .hur-list { display: flex; flex-direction: column; gap: 6px; }
+        .hur-empty { font-size: 12px; color: #94a3b8; padding: 10px; text-align: center; background: rgba(255,255,255,0.04); border-radius: 10px; }
+        .hur-item {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; padding: 8px 10px;
+            cursor: pointer; transition: background 0.2s, border-color 0.2s;
+        }
+        .hur-item:hover { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.45); }
+        .hur-item.hur-near { border-color: rgba(239,68,68,0.8); box-shadow: 0 0 10px rgba(239,68,68,0.35); }
+        .hur-badge {
+            min-width: 34px; height: 34px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 12px; color: #0f172a;
+            border: 2px solid #fff; flex-shrink: 0;
+        }
+        .hur-info { flex: 1; min-width: 0; }
+        .hur-name { font-size: 13px; font-weight: 700; color: #f8fafc; }
+        .hur-meta { font-size: 10.5px; color: #cbd5e1; line-height: 1.45; }
+        .hur-alert { font-size: 10px; color: #fca5a5; font-weight: 700; }
+        .hur-item > i { color: #f87171; font-size: 14px; }
+        .hur-section { margin: 6px 0 0 0; font-size: 11px; color: #f87171; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
+        .hur-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+        .hur-legend span { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #cbd5e1; }
+        .hur-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid #fff; }
+        .hur-source { font-size: 9.5px; color: #64748b; }
+
         /* Nota de disponibilidad histórica */
         .st-avail-note {
             background: rgba(56, 189, 248, 0.12);
@@ -920,6 +973,38 @@
         <i class="fa-solid fa-hurricane"></i>
     </div>
 
+    <!-- PANEL DE CICLONES TROPICALES ACTIVOS -->
+    <div class="hurricane-drawer" id="hurricaneDrawer">
+        <div class="st-drawer-header">
+            <h4 style="color:#f87171;"><i class="fa-solid fa-hurricane"></i> Ciclones Tropicales Activos</h4>
+            <span class="st-close-btn" onclick="toggleHurricaneDrawer(false)" title="Cerrar"><i class="fa-solid fa-xmark"></i></span>
+        </div>
+        <div class="st-status-bar">
+            <label class="drawer-checkbox-item" style="padding:0;">
+                <input type="checkbox" id="chkHurMaster" onchange="setHurricanesVisible(this.checked)">
+                <span>Mostrar en el mapa</span>
+            </label>
+            <button class="st-refresh-btn" onclick="loadActiveStorms()"><i class="fa-solid fa-rotate"></i> Actualizar</button>
+        </div>
+        <div id="hurStatus" class="hur-status">—</div>
+        <div id="hurList" class="hur-list"></div>
+
+        <h5 class="hur-section">Capas del servicio</h5>
+        <div id="hurLayerList"></div>
+
+        <h5 class="hur-section">Categoría (Saffir-Simpson)</h5>
+        <div class="hur-legend">
+            <span><i style="background:#f472b6"></i>Depresión</span>
+            <span><i style="background:#38bdf8"></i>Torm. tropical</span>
+            <span><i style="background:#4ade80"></i>H1</span>
+            <span><i style="background:#facc15"></i>H2</span>
+            <span><i style="background:#fb923c"></i>H3</span>
+            <span><i style="background:#ef4444"></i>H4</span>
+            <span><i style="background:#0f0f0f"></i>H5</span>
+        </div>
+        <div class="hur-source">Fuente: NHC/NOAA · JTWC · Esri Living Atlas (Active Hurricanes). Clic en un ciclón para ubicarlo.</div>
+    </div>
+
     <!-- BOTÓN MONITOREO DE MAREAS Y NIVEL DEL MAR -->
     <div class="tide-btn" id="btnToggleTides" onclick="toggleTides()" title="Monitoreo del Nivel del Mar y Mareas (UNESCO IOC / INSIVUMEH)">
         <i class="fa-solid fa-water"></i>
@@ -1125,13 +1210,13 @@
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
         const LEGENDS = {
             precip: { title: 'Precipitación Diaria CHIRPS (mm)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '5', '10', '20', '30+ mm'], labelName: 'Precipitación' },
-            temp: { title: 'Temperatura ERA5 (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['12°', '18°', '24°', '30°', '36°C'], labelName: 'Temperatura' },
-            wind: { title: 'Viento GFS (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'], labelName: 'Viento' },
-            soil: { title: 'Humedad Suelo Superficial ERA5 (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Humedad Suelo' },
-            dew: { title: 'Punto de Rocío ERA5 (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'], labelName: 'Punto Rocío' },
+            temp: { title: 'Temperatura ECMWF ERA5-Land · Topoclimática 300 m (°C)', gradient: 'linear-gradient(to right, #ffffcc, #ffea46, #ffaa00, #ff5500, #e60000, #990000)', ticks: ['10°', '16°', '23°', '30°', '36°C'], labelName: 'Temperatura' },
+            wind: { title: 'Viento ECMWF ERA5-Land (Nudos kt)', gradient: 'linear-gradient(to right, #5e4fa2, #3288bd, #66c2a5, #abdda4, #e6f598, #fee08b, #f46d43, #9e0142)', ticks: ['0', '5', '10', '20', '35+ kt'], labelName: 'Viento' },
+            soil: { title: 'Humedad Suelo Superficial ECMWF ERA5-Land (0-7cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Humedad Suelo' },
+            dew: { title: 'Punto de Rocío ECMWF · Topoclimático 300 m (°C)', gradient: 'linear-gradient(to right, #d73027, #f46d43, #fdae61, #fee08b, #d9ef8b, #1a9850)', ticks: ['5°', '10°', '15°', '20°', '25°C'], labelName: 'Punto Rocío' },
             precipAccum: { title: 'Precipitación Diaria Acumulada (GFS)', gradient: 'linear-gradient(to right, #e0f3f8, #91bfdb, #67a9cf, #2b8cbe, #045a8d, #023858)', ticks: ['0', '2', '5', '10', '20+ mm'], labelName: 'Precip Acum' },
             precipMensual: { title: 'Precipitación Mensual Acumulada (30d CHIRPS)', gradient: 'linear-gradient(to right, #74add1, #4575b4, #313695, #2b8cbe, #045a8d, #023858)', ticks: ['30', '100', '200', '300+ mm'], labelName: 'Precip Mensual' },
-            soilRoot: { title: 'Saturación Suelo (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Suelo Radicular' },
+            soilRoot: { title: 'Humedad Suelo Radicular ECMWF ERA5-Land (7-28cm)', gradient: 'linear-gradient(to right, #8c510a, #d8b365, #f6e8c3, #c7edd5, #5ab4ac, #01665e)', ticks: ['Seco', 'Medio', 'Saturado'], labelName: 'Suelo Radicular' },
             ndvi: { title: 'Vigorosidad NDVI (Biomasa)', gradient: 'linear-gradient(to right, #ffffe5, #f7fcb9, #d9f0a3, #addd8e, #78c679, #31a354, #006837)', ticks: ['0.1 (Bajo)', '0.4 (Medio)', '0.85 (Denso)'], labelName: 'NDVI Salud' },
             etReal: { title: 'Evapotranspiración Real ET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Real' },
             etPot: { title: 'Evapotranspiración Potencial PET (mm/8d)', gradient: 'linear-gradient(to right, #fff7ec, #fee8c8, #fdd49e, #fdbb84, #fc8d59, #ef6548, #d7301f, #990000)', ticks: ['0', '10', '20', '30', '40+ mm'], labelName: 'ET Potencial' },
@@ -1149,7 +1234,8 @@
             center: [15.5, -90.25],
             zoom: 7,
             maxZoom: 19,
-            minZoom: 5,
+            minZoom: 2,
+            worldCopyJump: true,
             zoomControl: false
         });
 
@@ -1379,6 +1465,7 @@
             const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
             if (shouldOpen) {
                 toggleStationsDrawer(false); // Evitar traslape cerrando estaciones
+                toggleHurricaneDrawer(false); // y el panel de ciclones
             }
             drawer.classList.toggle('open', shouldOpen);
         }
@@ -1389,6 +1476,7 @@
             const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
             if (shouldOpen) {
                 toggleDrawer(false); // Evitar traslape cerrando capas INAB
+                toggleHurricaneDrawer(false); // y el panel de ciclones
                 document.getElementById('forecast-panel').style.display = 'none';
             }
             drawer.classList.toggle('open', shouldOpen);
@@ -2229,53 +2317,249 @@
             }
         }
 
-        // ── 13. SEGUIMIENTO DE HURACANES Y CICLONES TROPICALES (ESRI ACTIVE HURRICANES) ──
+        // ── 13. SEGUIMIENTO DE HURACANES Y CICLONES TROPICALES (ESRI ACTIVE HURRICANES / NHC-JTWC) ──
         let hurricanesVisible = false;
+        let hurStormsCache = [];
         const hurricaneLayerGroup = L.layerGroup();
         const BASE_HURRICANES = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer';
+        const GT_CENTER = [15.5, -90.25];
+        const HUR_BASINS = { AL: 'Atlántico / Caribe', EP: 'Pacífico Oriental', CP: 'Pacífico Central', WP: 'Pacífico Occidental', IO: 'Océano Índico', SH: 'Hemisferio Sur' };
+
+        function hurWindKt(p) {
+            const raw = (p.INTENSITY !== undefined && p.INTENSITY !== null) ? p.INTENSITY : p.MAXWIND;
+            const v = Number(raw);
+            return (raw === null || raw === undefined || isNaN(v)) ? null : v;
+        }
+
+        function hurCategory(kt, type) {
+            if (kt === null) return { label: type || 'Sistema tropical', short: '–', color: '#94a3b8' };
+            if (kt < 34) return { label: 'Depresión / Baja tropical', short: 'D', color: '#f472b6' };
+            if (kt < 64) return { label: 'Tormenta tropical', short: 'TT', color: '#38bdf8' };
+            if (kt < 83) return { label: 'Huracán Categoría 1', short: 'H1', color: '#4ade80' };
+            if (kt < 96) return { label: 'Huracán Categoría 2', short: 'H2', color: '#facc15' };
+            if (kt < 113) return { label: 'Huracán Categoría 3 (mayor)', short: 'H3', color: '#fb923c' };
+            if (kt < 137) return { label: 'Huracán Categoría 4 (mayor)', short: 'H4', color: '#ef4444' };
+            return { label: 'Huracán Categoría 5 (mayor)', short: 'H5', color: '#0f0f0f' };
+        }
+
+        function hurDistanceKm(lat, lon) {
+            const R = 6371, toRad = d => d * Math.PI / 180;
+            const dLat = toRad(lat - GT_CENTER[0]), dLon = toRad(lon - GT_CENTER[1]);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(GT_CENTER[0])) * Math.cos(toRad(lat)) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function hurEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
 
         const hurricanePopupFunc = l => {
             const p = l.feature.properties;
-            const name = p.STORMNAME || p.stormname || 'Ciclón Tropical';
-            const type = p.STORMTYPE || p.stormtype || 'Tormenta';
-            const advDate = p.ADVDATE || p.advdate || '-';
-            const advNum = p.ADVISNUM || p.advisnum || '-';
-            const intensity = p.INTENSITY ? `${p.INTENSITY} kt (${Math.round(p.INTENSITY * 1.852)} km/h)` : '-';
+            const kt = hurWindKt(p);
+            const cat = hurCategory(kt, p.STORMTYPE);
+            const name = p.STORMNAME || 'Ciclón Tropical';
+            const advDate = p.ADVDATE || (p.DTG ? new Date(p.DTG).toLocaleString('es-GT') : '-');
+            const advNum = p.ADVISNUM || '-';
+            const intensity = kt !== null ? `${kt} kt (${Math.round(kt * 1.852)} km/h)` : '-';
             const mslp = p.MSLP ? `${p.MSLP} mb` : '-';
-            const basin = p.BASIN || p.basin || '-';
-
+            const basin = HUR_BASINS[String(p.BASIN || '').toUpperCase()] || p.BASIN || '-';
             return `
                 <div class="popup-info-box">
-                    <div class="popup-title">🌀 ${name} (${type})</div>
-                    <b>🗓️ Boletín / Aviso:</b> ${advNum} · ${advDate}<br>
-                    <b>💨 Viento Máximo:</b> ${intensity}<br>
-                    <b>⏱️ Presión Central:</b> ${mslp}<br>
-                    <b>🌊 Cuenca:</b> ${basin}
+                    <div class="popup-title">🌀 ${hurEsc(name)}</div>
+                    <b>Categoría:</b> ${cat.label}<br>
+                    <b>🗓️ Boletín / Fecha:</b> ${hurEsc(advNum)} · ${hurEsc(advDate)}<br>
+                    <b>💨 Viento máximo:</b> ${intensity}<br>
+                    <b>⏱️ Presión central:</b> ${mslp}<br>
+                    <b>🌊 Cuenca:</b> ${hurEsc(basin)}
                 </div>
             `;
         };
 
-        const hurricaneSublayers = [
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/4` }).bindPopup(hurricanePopupFunc),
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/2` }).bindPopup(hurricanePopupFunc),
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/3` }).bindPopup(hurricanePopupFunc),
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/0` }).bindPopup(hurricanePopupFunc),
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/1` }).bindPopup(hurricanePopupFunc),
-            L.esri.featureLayer({ url: `${BASE_HURRICANES}/5` }).bindPopup(hurricanePopupFunc)
-        ];
-        hurricaneSublayers.forEach(lyr => hurricaneLayerGroup.addLayer(lyr));
+        // Subcapas del servicio (el orden define el apilamiento: polígonos abajo, puntos arriba)
+        const HUR_SUBLAYERS = {
+            cone:   { name: 'Cono de error (3 y 5 días)', id: 4, on: true },
+            wind34: { name: 'Campo de vientos ≥ 34 kt', id: 7, on: false },
+            warn:   { name: 'Avisos y vigilancias costeras', id: 5, on: true },
+            oTrack: { name: 'Trayectoria observada', id: 3, on: true },
+            fTrack: { name: 'Trayectoria pronosticada', id: 2, on: true },
+            oPos:   { name: 'Posiciones observadas', id: 1, on: true },
+            fPos:   { name: 'Posiciones pronosticadas', id: 0, on: true }
+        };
 
-        function toggleHurricanes(forceState) {
-            hurricanesVisible = forceState !== undefined ? forceState : !hurricanesVisible;
+        Object.entries(HUR_SUBLAYERS).forEach(([key, s]) => {
+            s.layer = L.esri.featureLayer({ url: `${BASE_HURRICANES}/${s.id}` }).bindPopup(hurricanePopupFunc);
+            if (s.on) hurricaneLayerGroup.addLayer(s.layer);
+        });
+
+        function renderHurLayerList() {
+            const box = document.getElementById('hurLayerList');
+            if (!box) return;
+            box.innerHTML = Object.entries(HUR_SUBLAYERS).map(([key, s]) => `
+                <label class="drawer-checkbox-item">
+                    <input type="checkbox" ${s.on ? 'checked' : ''} onchange="toggleHurSublayer('${key}', this.checked)">
+                    <span>${s.name}</span>
+                </label>
+            `).join('');
+        }
+
+        function toggleHurSublayer(key, checked) {
+            const s = HUR_SUBLAYERS[key];
+            if (!s) return;
+            s.on = checked;
+            if (checked) {
+                hurricaneLayerGroup.addLayer(s.layer);
+                if ((key === 'cone' || key === 'wind34') && s.layer.bringToBack) s.layer.bringToBack();
+            } else {
+                hurricaneLayerGroup.removeLayer(s.layer);
+            }
+        }
+
+        function setHurricanesVisible(state) {
+            hurricanesVisible = !!state;
             const btn = document.getElementById('btnToggleHurricanes');
             if (btn) btn.classList.toggle('active', hurricanesVisible);
-
+            const chk = document.getElementById('chkHurMaster');
+            if (chk) chk.checked = hurricanesVisible;
             if (hurricanesVisible) {
                 if (!map.hasLayer(hurricaneLayerGroup)) map.addLayer(hurricaneLayerGroup);
             } else {
                 if (map.hasLayer(hurricaneLayerGroup)) map.removeLayer(hurricaneLayerGroup);
             }
         }
+
+        function toggleHurricaneDrawer(forceState) {
+            const drawer = document.getElementById('hurricaneDrawer');
+            if (!drawer) return;
+            const shouldOpen = forceState !== undefined ? forceState : !drawer.classList.contains('open');
+            if (shouldOpen) {
+                toggleDrawer(false);
+                toggleStationsDrawer(false);
+                if (!hurricanesVisible) setHurricanesVisible(true);
+                loadActiveStorms();
+            }
+            drawer.classList.toggle('open', shouldOpen);
+        }
+
+        // Botón 🌀: abre/cierra el panel (al abrirlo enciende las capas)
+        function toggleHurricanes() {
+            toggleHurricaneDrawer();
+        }
+
+        async function loadActiveStorms() {
+            const list = document.getElementById('hurList');
+            const status = document.getElementById('hurStatus');
+            if (!list) return;
+            list.innerHTML = '<div class="hur-empty"><i class="fa-solid fa-spinner fa-spin"></i> Consultando NHC / JTWC...</div>';
+
+            const q = (id, fields) => fetch(`${BASE_HURRICANES}/${id}/query?where=1%3D1&outFields=${fields}&returnGeometry=true&outSR=4326&f=geojson`)
+                .then(r => r.ok ? r.json() : { features: [] })
+                .catch(() => ({ features: [] }));
+
+            try {
+                const [obs, fc] = await Promise.all([
+                    q(1, 'STORMNAME,STORMID,STORMTYPE,BASIN,DTG,INTENSITY,MSLP'),
+                    q(0, 'STORMNAME,STORMTYPE,BASIN,TAU,MAXWIND,MSLP,TCDIR,TCSPD,ADVDATE,ADVISNUM')
+                ]);
+
+                const storms = {};
+                const keyOf = p => String(p.STORMNAME || 'SIN NOMBRE').trim().toUpperCase() + '|' + String(p.BASIN || '').toUpperCase();
+                const getStorm = p => {
+                    const k = keyOf(p);
+                    if (!storms[k]) storms[k] = { name: p.STORMNAME || 'Sin nombre', basin: String(p.BASIN || '').toUpperCase(), pts: [], cur: null, curTime: -Infinity, fc: null, minTau: Infinity };
+                    return storms[k];
+                };
+
+                // Posiciones observadas: la más reciente define la posición actual
+                (obs.features || []).forEach(f => {
+                    if (!f.geometry || !f.geometry.coordinates) return;
+                    const p = f.properties || {};
+                    const [lon, lat] = f.geometry.coordinates;
+                    const s = getStorm(p);
+                    s.pts.push([lat, lon]);
+                    const t = Number(p.DTG) || 0;
+                    if (t >= s.curTime) {
+                        s.curTime = t;
+                        s.cur = { lat, lon, kt: hurWindKt(p), mslp: p.MSLP, type: p.STORMTYPE, time: t };
+                    }
+                });
+
+                // Posiciones pronosticadas: TAU mínimo = análisis actual del boletín
+                (fc.features || []).forEach(f => {
+                    if (!f.geometry || !f.geometry.coordinates) return;
+                    const p = f.properties || {};
+                    const [lon, lat] = f.geometry.coordinates;
+                    const s = getStorm(p);
+                    s.pts.push([lat, lon]);
+                    const tau = Number(p.TAU);
+                    if (!isNaN(tau) && tau < s.minTau) {
+                        s.minTau = tau;
+                        s.fc = { lat, lon, kt: hurWindKt(p), mslp: p.MSLP, type: p.STORMTYPE, dir: p.TCDIR, spd: p.TCSPD, adv: p.ADVISNUM, advDate: p.ADVDATE };
+                    }
+                });
+
+                hurStormsCache = Object.values(storms).map(s => {
+                    const ref = s.fc || s.cur;
+                    if (!ref) return null;
+                    const kt = (s.fc && s.fc.kt !== null) ? s.fc.kt : (s.cur ? s.cur.kt : null);
+                    const dist = hurDistanceKm(ref.lat, ref.lon);
+                    return Object.assign(s, { ref, kt, dist, cat: hurCategory(kt, ref.type) });
+                }).filter(Boolean);
+
+                // Prioridad: cuencas que afectan a Guatemala (Atlántico y Pacífico Oriental), luego cercanía
+                const prio = b => (b === 'AL' || b === 'EP') ? 0 : 1;
+                hurStormsCache.sort((a, b) => prio(a.basin) - prio(b.basin) || a.dist - b.dist);
+
+                const hhmm = new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+                if (!hurStormsCache.length) {
+                    list.innerHTML = '<div class="hur-empty"><i class="fa-solid fa-circle-check" style="color:#4ade80;"></i> No hay ciclones tropicales activos en este momento.</div>';
+                    if (status) status.textContent = `Sin sistemas activos · consultado ${hhmm}`;
+                    return;
+                }
+
+                if (status) status.textContent = `${hurStormsCache.length} sistema(s) activo(s) en el mundo · actualizado ${hhmm}`;
+
+                list.innerHTML = hurStormsCache.map((s, i) => {
+                    const near = s.dist < 1000 && (s.basin === 'AL' || s.basin === 'EP');
+                    const windTxt = s.kt !== null ? `${s.kt} kt (${Math.round(s.kt * 1.852)} km/h)` : 'viento s/d';
+                    const presTxt = s.ref.mslp ? ` · ${s.ref.mslp} mb` : '';
+                    const movTxt = (s.fc && s.fc.spd) ? ` · Mov. ${hurEsc(s.fc.dir || '')}° a ${s.fc.spd} kt` : '';
+                    const timeTxt = (s.cur && s.cur.time) ? `Última posición: ${new Date(s.cur.time).toLocaleString('es-GT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : (s.fc && s.fc.advDate ? `Boletín: ${hurEsc(s.fc.advDate)}` : '');
+                    const badgeTxtColor = s.cat.short === 'H5' ? '#fff' : '#0f172a';
+                    return `
+                        <div class="hur-item ${near ? 'hur-near' : ''}" onclick="zoomToStorm(${i})" title="Ubicar ${hurEsc(s.name)} en el mapa">
+                            <div class="hur-badge" style="background:${s.cat.color}; color:${badgeTxtColor};">${s.cat.short}</div>
+                            <div class="hur-info">
+                                <div class="hur-name">${hurEsc(s.name)}</div>
+                                <div class="hur-meta">${s.cat.label} · ${windTxt}${presTxt}</div>
+                                <div class="hur-meta">${hurEsc(HUR_BASINS[s.basin] || s.basin || '-')} · a ${Math.round(s.dist).toLocaleString('es-GT')} km de Guatemala${movTxt}</div>
+                                ${timeTxt ? `<div class="hur-meta" style="color:#94a3b8;">${timeTxt}</div>` : ''}
+                                ${near ? '<div class="hur-alert"><i class="fa-solid fa-triangle-exclamation"></i> A menos de 1,000 km de Guatemala</div>' : ''}
+                            </div>
+                            <i class="fa-solid fa-location-crosshairs"></i>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = '<div class="hur-empty" style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation"></i> No se pudo consultar el servicio de ciclones.</div>';
+                if (status) status.textContent = 'Error de conexión';
+            }
+        }
+
+        function zoomToStorm(i) {
+            const s = hurStormsCache[i];
+            if (!s) return;
+            if (!hurricanesVisible) setHurricanesVisible(true);
+            if (s.pts.length > 1) {
+                map.flyToBounds(L.latLngBounds(s.pts).pad(0.25), { maxZoom: 7, duration: 1.2 });
+            } else {
+                map.flyTo([s.ref.lat, s.ref.lon], 6, { duration: 1.2 });
+            }
+            // En pantallas pequeñas se cierra el panel para ver el ciclón
+            if (window.innerWidth < 700) toggleHurricaneDrawer(false);
+        }
+
+        renderHurLayerList();
 
         // ── 14. MONITOREO DE MAREAS Y NIVEL DEL MAR (UNESCO-IOC / INSIVUMEH) ──
         let tidesVisible = false;
