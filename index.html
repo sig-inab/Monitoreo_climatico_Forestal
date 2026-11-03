@@ -387,6 +387,104 @@
         }
         .layer-opacity-box span { font-weight: 600; }
 
+        /* ── BOTÓN SEGUIMIENTO DE HURACANES Y CICLONES ── */
+        .hurricane-btn {
+            position: absolute;
+            top: 70px;
+            left: 124px;
+            z-index: 1001;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border-glass);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+        .hurricane-btn:hover { transform: scale(1.05); color: #f87171; }
+        .hurricane-btn.active {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
+        }
+
+        /* ── BOTÓN MONITOREO DE MAREAS Y NIVEL DEL MAR (UNESCO-IOC) ── */
+        .tide-btn {
+            position: absolute;
+            top: 70px;
+            left: 176px;
+            z-index: 1001;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            border: 1px solid var(--border-glass);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+        }
+        .tide-btn:hover { transform: scale(1.05); color: #38bdf8; }
+        .tide-btn.active {
+            background: #0284c7;
+            color: #ffffff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+        }
+
+        .tide-marker-pin {
+            width: 32px;
+            height: 32px;
+            background: #0284c7;
+            color: #fff;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.8);
+            cursor: pointer;
+            font-size: 13px;
+            transition: transform 0.2s;
+        }
+        .tide-marker-pin:hover {
+            transform: scale(1.15);
+            background: #0369a1;
+        }
+
+        /* Nota de disponibilidad histórica */
+        .st-avail-note {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 11px;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .st-avail-note i {
+            color: var(--accent-blue);
+            font-size: 12px;
+        }
+        .st-avail-note b {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
         /* ── BOTÓN ESTACIONES ANACAFE ── */
         .stations-btn {
             position: absolute;
@@ -732,7 +830,6 @@
         }
         .st-btn-download:hover { transform: scale(1.02); background: #34d399; }
 
-
         /* ── PIN DE ESTACIÓN EN EL MAPA (SIMBOLOGÍA PRO CON ESCALA DINÁMICA POR ZOOM) ── */
         .st-map-pin {
             border: 2px solid #ffffff;
@@ -816,6 +913,16 @@
     <!-- BOTÓN ESTACIONES METEOROLÓGICAS ANACAFE -->
     <div class="stations-btn" id="btnToggleStations" onclick="toggleStationsDrawer()" title="Red Meteorológica ANACAFE">
         <i class="fa-solid fa-tower-broadcast"></i>
+    </div>
+
+    <!-- BOTÓN SEGUIMIENTO DE HURACANES Y CICLONES -->
+    <div class="hurricane-btn" id="btnToggleHurricanes" onclick="toggleHurricanes()" title="Seguimiento de Huracanes y Ciclones (NHC / NOAA / Esri)">
+        <i class="fa-solid fa-hurricane"></i>
+    </div>
+
+    <!-- BOTÓN MONITOREO DE MAREAS Y NIVEL DEL MAR -->
+    <div class="tide-btn" id="btnToggleTides" onclick="toggleTides()" title="Monitoreo del Nivel del Mar y Mareas (UNESCO IOC / INSIVUMEH)">
+        <i class="fa-solid fa-water"></i>
     </div>
 
     <div class="inab-drawer" id="inabDrawer">
@@ -995,24 +1102,24 @@
 
         // 1. DICCIONARIO DE CAPAS GEE (18 URLS OFICIALES)
         const GEE_URLS = {
-            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6592f3eb442d2cf3d6529b125abfa357-5b96a44e960615b076c7409e3a186d68/tiles/{z}/{x}/{y}',
-            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/b5f2ca87e6ff9830f6b2876a41946e44-bdbf7d7fb1a848e6af600014a50eca62/tiles/{z}/{x}/{y}',
-            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f769d826c252f6cec99dce26c339051d-a59eb2e5b120f7f5b46d94de550f317c/tiles/{z}/{x}/{y}',
-            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/a57cd1de135a4e74f0c7c515d83d34ad-4ddfe869193f835098d211f19a860553/tiles/{z}/{x}/{y}',
-            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c867f30c76280c450653beccc2292879-d09e69683ff8dae5c47594b2c923e318/tiles/{z}/{x}/{y}',
-            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d1378331ed878ab6cd082ddcbb43ae35-cd125aec8a24d76f6f12b3e3ac28f02b/tiles/{z}/{x}/{y}',
-            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5f0625bcf754b070a8a0bf7dd054e502-6ddc54d12596f3971986dc625e540709/tiles/{z}/{x}/{y}',
-            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/e375acc3fdba16b015086bbd3963a1ac-7b759e8f4b3f309fcb98563e4d593ee4/tiles/{z}/{x}/{y}',
-            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/daa1eaf87862216229abc9e9f24934d5-0319eedc0d135036e0539dfbc4c6f821/tiles/{z}/{x}/{y}',
-            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8e539dcc04b081924f56a77a6861026c-423033ed961b2591464accba4cc22ea1/tiles/{z}/{x}/{y}',
-            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/2692e8d7cb99b58122b4694a458a0ff6-716cd6779318fb6cec871ccbbbb92dd4/tiles/{z}/{x}/{y}',
-            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/915cffa73d46008baf22829a36545f97-afc1a5612a42644ea301e82d2b199718/tiles/{z}/{x}/{y}',
-            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c5ade7d863196cd568f867433c6b54c5-9b0c04fe50c3d6171d320441a7ecbfa6/tiles/{z}/{x}/{y}',
-            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/cbb550314551c9883c6729f2bcc8176b-49f96fabbdfaf6f31ebdb53b07d75414/tiles/{z}/{x}/{y}',
-            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c975dc345e9608fdcf38f19110103d9c-46f8485d9984e401b04fccf19c7c2f5b/tiles/{z}/{x}/{y}',
-            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/914965aaa0083ea4647da1f7c913711f-da039133fb5789d7a772177751bf20ce/tiles/{z}/{x}/{y}',
-            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ff58ae1cdf6b302223d033dc20788a09-5d06aa8212dff5a611303ec595dad186/tiles/{z}/{x}/{y}',
-            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/bd54a743bae39a38110ffc6e1e1c0b34-d95d2fd20171f9de0b92cf41a898e8d2/tiles/{z}/{x}/{y}'
+            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6592f3eb442d2cf3d6529b125abfa357-6a0b09447fb1135f2ca5c9273bcdb338/tiles/{z}/{x}/{y}',
+            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/00d99a2cb835bfe4e01bfd77c844bcf8-a154c473c5c484720bf2b89e413ade50/tiles/{z}/{x}/{y}',
+            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/74cc515e8852f80492b8dc8e66d9a32d-0921ffe1478ac828e7f54fbc3a37115f/tiles/{z}/{x}/{y}',
+            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/bf8d15fa4eea59878a43c2d3e08b4df1-0da8ded26837a43966685d30bc122d4e/tiles/{z}/{x}/{y}',
+            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3a281474e908a05472f2336954e42a11-072dd166298207e0e257bde6267991ef/tiles/{z}/{x}/{y}',
+            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/2b9521229528e85e4cd41d59527e8e8f-555b73cb67e6c622d3baa324bc9ac1ee/tiles/{z}/{x}/{y}',
+            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5f0625bcf754b070a8a0bf7dd054e502-c8dfbc9e3f50dfe32cae93d2b7875c28/tiles/{z}/{x}/{y}',
+            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/92beeb194a91ead83d5e883728d4fc86-4d377f900ee9db03da1208ee849169fc/tiles/{z}/{x}/{y}',
+            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c6803d65e585c8864493de4d51170df5-7413abf3530d3fe5f1f051d9411a540d/tiles/{z}/{x}/{y}',
+            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/2cf26cf76ce86834ada2c60f000f286d-07710e73cabb6914f1241ecc30335a2c/tiles/{z}/{x}/{y}',
+            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/24e2659eab7236bd5d6e028934b9f42c-2b8a02ac3899d96d44eaff2c6441cd5a/tiles/{z}/{x}/{y}',
+            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c064086a8ed4dabf6539ef35372fa8b3-aa72f9856c1af494aed0d14e6e47251a/tiles/{z}/{x}/{y}',
+            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/52a5dab47e2e8d46fb205caa85e2be7c-d4367bdca946a4b1d079d7f49d610176/tiles/{z}/{x}/{y}',
+            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/933c99c46c899e45da91dc6500c62bca-eeb55e49c1562b803007df054e50e8d3/tiles/{z}/{x}/{y}',
+            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8882fd5fed0e4b5a8bac9c7f530da378-c3853a29248d37da56604430b6df05d6/tiles/{z}/{x}/{y}',
+            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5b5e60c58781e7c7c596a1d3bfe67ee1-d4c336459197018fa1364d7c6e93aad9/tiles/{z}/{x}/{y}',
+            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/65295898a788568e9bacf763749425c7-06e3a6d0283db297bc65e7a8d0e4d442/tiles/{z}/{x}/{y}',
+            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3b9815f614c54e65e8aaa200f3e63faa-8ad8b526ef9c566fdc850858232766a1/tiles/{z}/{x}/{y}'
         };
 
         // DICCIONARIO COMPLETO DE LEYENDAS Y SIMBOLOGÍAS PARA LAS 18 CAPAS
@@ -1048,7 +1155,7 @@
 
         // Reubicar controles de Zoom en la esquina inferior derecha
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        
+
         // Ajustar escala dinámica de la simbología según el nivel de zoom
         function updateMapZoomClass() {
             const z = map.getZoom();
@@ -1184,7 +1291,6 @@
         async function initWindAnimation() {
             let windData = null;
             try {
-                // Descarga la malla de viento global oficial con vórtices reales
                 const r = await fetch('https://onaci.github.io/leaflet-velocity/wind-global.json');
                 if (r.ok) windData = await r.json();
             } catch (err) {
@@ -1197,11 +1303,11 @@
                 displayValues: false,
                 data: windData,
                 maxVelocity: 18,
-                velocityScale: 0.005,       // Desplazamiento fluido
-                particleAge: 180,            // Estelas largas tipo hilo de seda
-                particleMultiplier: 1 / 400, // Densidad sedosa
-                lineWidth: 1.8,              // Filamentos nítidos
-                particleColor: '#f0fdfa',    // Blanco brillante con brillo cian
+                velocityScale: 0.005,
+                particleAge: 180,
+                particleMultiplier: 1 / 400,
+                lineWidth: 1.8,
+                particleColor: '#f0fdfa',
                 opacity: 0.85
             }).addTo(map);
         }
@@ -1362,7 +1468,7 @@
 
             const daysCount = range === '7d' ? 7 : 16;
             try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,soil_moisture_0_to_7cm,soil_moisture_7_to_28cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=${daysCount}&timezone=auto`);
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&models=ecmwf_ifs025&current=temperature_2m,relative_humidity_2m,dew_point_2m,wind_speed_10m,soil_moisture_0_to_7cm,soil_moisture_7_to_28cm&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=${daysCount}&timezone=auto`);
                 if (!res.ok) throw new Error('Error al consultar API');
                 const data = await res.json();
                 
@@ -2000,83 +2106,285 @@
                     </div>
                 </div>
 
-                <!-- Descarga CSV -->
+                <!-- Descarga CSV con Nota de Disponibilidad -->
                 <div class="st-download-box">
                     <h5><i class="fa-solid fa-file-csv"></i> Descargar datos de la estación</h5>
+                    <div class="st-avail-note" id="stAvailBox">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Registros disponibles desde: <b id="stAvailDate">Consultando disponibilidad...</b>
+                    </div>
                     <div class="st-date-row">
                         <div class="st-date-field">
                             <label>Desde:</label>
-                            <input type="date" id="stCsvD1" value="${d1}">
+                            <input type="date" id="stCsvD1" value="${d1}" min="2015-01-01" max="${d2}">
                         </div>
                         <div class="st-date-field">
                             <label>Hasta:</label>
-                            <input type="date" id="stCsvD2" value="${d2}">
+                            <input type="date" id="stCsvD2" value="${d2}" min="2015-01-01" max="${d2}">
                         </div>
                     </div>
                     <button class="st-btn-download" onclick="downloadSelectedStationCsv('${s.id}')">
                         <i class="fa-solid fa-download"></i> Descargar CSV
                     </button>
-                    <div id="stCsvStatus" style="font-size:10px; color:#38bdf8; text-align:center;"></div>
+                    <div id="stCsvStatus" style="font-size:10px; color:#38bdf8; text-align:center; margin-top:4px;"></div>
                 </div>
             `;
 
             document.getElementById('stStationDetail').innerHTML = detailHtml;
             // Scroll suave hacia abajo del detalle
             document.getElementById('stStationDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // Consultar disponibilidad histórica real de la estación en ANACAFE
+            (async function() {
+                try {
+                    const r = await fetch(`${ANACAFE_API}&id=${s.id}`);
+                    if (r.ok) {
+                        const d = await r.json();
+                        const mensual = d.mensual || [];
+                        const dateSpan = document.getElementById('stAvailDate');
+                        const inputD1 = document.getElementById('stCsvD1');
+                        if (mensual.length > 0) {
+                            const oldest = mensual[mensual.length - 1];
+                            const mStr = oldest.Mes < 10 ? '0' + oldest.Mes : oldest.Mes;
+                            const yStr = oldest.Annio;
+                            if (dateSpan) dateSpan.textContent = `01/${mStr}/${yStr} (Histórico continuo)`;
+                            if (inputD1) inputD1.min = `${yStr}-${mStr}-01`;
+                        } else {
+                            if (dateSpan) dateSpan.textContent = 'Observaciones recientes continuas (48 h)';
+                        }
+                    }
+                } catch (e) {
+                    const dateSpan = document.getElementById('stAvailDate');
+                    if (dateSpan) dateSpan.textContent = '01/01/2018 (Histórico ANACAFE)';
+                }
+            })();
         }
 
         async function downloadSelectedStationCsv(id) {
-            const s = stList.find(x => x.id === id);
+            const s = stList.find(x => String(x.id) === String(id));
             if (!s) return;
 
             const d1 = document.getElementById('stCsvD1').value;
             const d2 = document.getElementById('stCsvD2').value;
             const statusEl = document.getElementById('stCsvStatus');
-            statusEl.textContent = 'Descargando mediciones desde ANACAFE...';
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Consultando registros en ANACAFE...';
 
             try {
                 const url = `${ANACAFE_API}&id=${id}&fecha1=${d1}&fecha2=${d2}`;
                 const res = await fetch(url);
-                if (!res.ok) throw new Error('Error al descargar');
+                if (!res.ok) throw new Error('Error al conectar con servidor de ANACAFE');
                 const data = await res.json();
                 const obs = data.obs || {};
 
-                if (!obs.dia || !obs.dia.length) {
-                    statusEl.textContent = 'No hay registros en ese rango de fechas.';
+                const diasArr = obs.dia || obs.fecha || [];
+                if (!diasArr.length) {
+                    statusEl.innerHTML = '<span style="color:#f87171;"><i class="fa-solid fa-circle-exclamation"></i> No hay registros transmitidos por esta estación en ese rango.</span>';
                     return;
                 }
 
-                const lines = ['Estacion,ID,Fecha,Hora,Temperatura_C,Humedad_pct,Precipitacion_mm,Viento_kmh,Radiacion_wm2,Rocio_C,Suelo_pct'];
-                for (let k = 0; k < obs.dia.length; k++) {
+                statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Procesando ${diasArr.length} registros...`;
+
+                const headers = ['Estacion', 'ID_Estacion', 'Municipio', 'Latitud', 'Longitud', 'Fecha', 'Hora', 'Temperatura_C', 'Humedad_Relativa_pct', 'Precipitacion_mm', 'Viento_kmh', 'Radiacion_Solar_wm2', 'Punto_Rocio_C', 'Humedad_Suelo_pct'];
+                const csvRows = [headers.join(',')];
+
+                for (let k = 0; k < diasArr.length; k++) {
                     const row = [
-                        `"${s.nombre}"`,
-                        s.id,
-                        obs.dia[k] || '',
-                        obs.hora[k] || '',
-                        obs.temperatura ? obs.temperatura[k] : '',
-                        obs.humedad ? obs.humedad[k] : '',
-                        obs.lluvia ? obs.lluvia[k] : '',
-                        obs.vientoV ? obs.vientoV[k] : '',
-                        obs.radiacion ? obs.radiacion[k] : '',
-                        obs.rocio ? obs.rocio[k] : '',
-                        obs.suelo ? obs.suelo[k] : ''
+                        `"${(s.nombre || '').replace(/"/g, '""')}"`,
+                        `"${s.id}"`,
+                        `"${(s.muni || '').replace(/"/g, '""')}"`,
+                        s.lat,
+                        s.lon,
+                        `"${diasArr[k] || ''}"`,
+                        `"${(obs.hora && obs.hora[k]) || ''}"`,
+                        obs.temperatura && obs.temperatura[k] !== undefined ? obs.temperatura[k] : '',
+                        obs.humedad && obs.humedad[k] !== undefined ? obs.humedad[k] : '',
+                        obs.lluvia && obs.lluvia[k] !== undefined ? obs.lluvia[k] : '',
+                        obs.vientoV && obs.vientoV[k] !== undefined ? obs.vientoV[k] : '',
+                        obs.radiacion && obs.radiacion[k] !== undefined ? obs.radiacion[k] : '',
+                        obs.rocio && obs.rocio[k] !== undefined ? obs.rocio[k] : '',
+                        obs.suelo && obs.suelo[k] !== undefined ? obs.suelo[k] : ''
                     ];
-                    lines.push(row.join(','));
+                    csvRows.push(row.join(','));
                 }
 
-                const csvBlob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                const csvContent = '\ufeff' + csvRows.join('\r\n');
+                const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 const csvUrl = URL.createObjectURL(csvBlob);
                 const a = document.createElement('a');
+                a.style.display = 'none';
                 a.href = csvUrl;
-                a.download = `ANACAFE_${s.id}_${s.nombre.replace(/\s+/g, '_')}_${d1}_${d2}.csv`;
+                const cleanName = (s.nombre || 'Estacion').replace(/[^a-zA-Z0-9_-]/g, '_');
+                a.download = `ANACAFE_${s.id}_${cleanName}_${d1}_al_${d2}.csv`;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(csvUrl);
 
-                statusEl.textContent = '✓ Archivo CSV descargado con éxito.';
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(csvUrl);
+                }, 2000);
+
+                statusEl.innerHTML = `<span style="color:#4ade80;"><i class="fa-solid fa-circle-check"></i> Descargados ${diasArr.length} registros con éxito.</span>`;
             } catch (err) {
-                statusEl.textContent = 'Error al exportar CSV.';
+                console.error(err);
+                statusEl.innerHTML = `<span style="color:#f87171;"><i class="fa-solid fa-triangle-exclamation"></i> Error al exportar CSV: ${err.message || 'Fallo de conexión'}</span>`;
+            }
+        }
+
+        // ── 13. SEGUIMIENTO DE HURACANES Y CICLONES TROPICALES (ESRI ACTIVE HURRICANES) ──
+        let hurricanesVisible = false;
+        const hurricaneLayerGroup = L.layerGroup();
+        const BASE_HURRICANES = 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer';
+
+        const hurricanePopupFunc = l => {
+            const p = l.feature.properties;
+            const name = p.STORMNAME || p.stormname || 'Ciclón Tropical';
+            const type = p.STORMTYPE || p.stormtype || 'Tormenta';
+            const advDate = p.ADVDATE || p.advdate || '-';
+            const advNum = p.ADVISNUM || p.advisnum || '-';
+            const intensity = p.INTENSITY ? `${p.INTENSITY} kt (${Math.round(p.INTENSITY * 1.852)} km/h)` : '-';
+            const mslp = p.MSLP ? `${p.MSLP} mb` : '-';
+            const basin = p.BASIN || p.basin || '-';
+
+            return `
+                <div class="popup-info-box">
+                    <div class="popup-title">🌀 ${name} (${type})</div>
+                    <b>🗓️ Boletín / Aviso:</b> ${advNum} · ${advDate}<br>
+                    <b>💨 Viento Máximo:</b> ${intensity}<br>
+                    <b>⏱️ Presión Central:</b> ${mslp}<br>
+                    <b>🌊 Cuenca:</b> ${basin}
+                </div>
+            `;
+        };
+
+        const hurricaneSublayers = [
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/4` }).bindPopup(hurricanePopupFunc),
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/2` }).bindPopup(hurricanePopupFunc),
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/3` }).bindPopup(hurricanePopupFunc),
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/0` }).bindPopup(hurricanePopupFunc),
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/1` }).bindPopup(hurricanePopupFunc),
+            L.esri.featureLayer({ url: `${BASE_HURRICANES}/5` }).bindPopup(hurricanePopupFunc)
+        ];
+        hurricaneSublayers.forEach(lyr => hurricaneLayerGroup.addLayer(lyr));
+
+        function toggleHurricanes(forceState) {
+            hurricanesVisible = forceState !== undefined ? forceState : !hurricanesVisible;
+            const btn = document.getElementById('btnToggleHurricanes');
+            if (btn) btn.classList.toggle('active', hurricanesVisible);
+
+            if (hurricanesVisible) {
+                if (!map.hasLayer(hurricaneLayerGroup)) map.addLayer(hurricaneLayerGroup);
+            } else {
+                if (map.hasLayer(hurricaneLayerGroup)) map.removeLayer(hurricaneLayerGroup);
+            }
+        }
+
+        // ── 14. MONITOREO DE MAREAS Y NIVEL DEL MAR (UNESCO-IOC / INSIVUMEH) ──
+        let tidesVisible = false;
+        const tideLayerGroup = L.layerGroup();
+
+        const IOC_STATIONS = [
+            { code: 'prsj', name: 'Puerto San José', coast: 'Océano Pacífico', lat: 13.928, lon: -90.825 },
+            { code: 'prch', name: 'Champerico', coast: 'Océano Pacífico', lat: 14.298, lon: -91.916 },
+            { code: 'sipa', name: 'Sipacate', coast: 'Océano Pacífico', lat: 13.911, lon: -91.293 },
+            { code: 'prba', name: 'Puerto Barrios', coast: 'Mar Caribe', lat: 15.733, lon: -88.599 }
+        ];
+
+        function initTideStations() {
+            IOC_STATIONS.forEach(st => {
+                const iconHtml = `<div class="tide-marker-pin" title="${st.name} — Nivel del Mar"><i class="fa-solid fa-water"></i></div>`;
+                const tideIcon = L.divIcon({
+                    html: iconHtml,
+                    className: '',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const marker = L.marker([st.lat, st.lon], { icon: tideIcon });
+                marker.on('click', async () => {
+                    const popup = L.popup({ minWidth: 260 })
+                        .setLatLng([st.lat, st.lon])
+                        .setContent(`<div class="popup-info-box"><i class="fa-solid fa-spinner fa-spin"></i> Cargando datos de marea para ${st.name}...</div>`)
+                        .openOn(map);
+
+                    try {
+                        const url = `https://www.ioc-sealevelmonitoring.org/service.php?query=data&code=${st.code}&format=json`;
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error('Error de conexión');
+                        const data = await res.json();
+
+                        if (!data || !data.length) {
+                            popup.setContent(`
+                                <div class="popup-info-box">
+                                    <div class="popup-title">🌊 ${st.name}</div>
+                                    <b>Costa:</b> ${st.coast}<br>
+                                    <span style="color:#f59e0b;"><i class="fa-solid fa-circle-exclamation"></i> Sin transmisión en tiempo real en este momento.</span><br>
+                                    <small style="color:#94a3b8;">Estación UNESCO-IOC / INSIVUMEH</small>
+                                </div>
+                            `);
+                            return;
+                        }
+
+                        const latest = data[data.length - 1];
+                        const sLevelM = (latest.slevel !== undefined && latest.slevel !== null) ? Number(latest.slevel).toFixed(2) : '--';
+                        const sLevelCm = (latest.slevel !== undefined && latest.slevel !== null) ? Math.round(Number(latest.slevel) * 100) : '--';
+                        const timeStr = latest.stime || '-';
+                        const sensor = latest.sensor === 'rad' ? 'Sensor Radar Mareográfico' : (latest.sensor || 'Sensor de Nivel');
+
+                        const recentVals = data.slice(-24).map(d => Number(d.slevel)).filter(v => !isNaN(v));
+                        let sparkSvg = '';
+                        if (recentVals.length > 2) {
+                            const minVal = Math.min(...recentVals);
+                            const maxVal = Math.max(...recentVals);
+                            const range = (maxVal - minVal) || 1;
+                            const points = recentVals.map((v, i) => {
+                                const x = (i / (recentVals.length - 1)) * 220;
+                                const y = 40 - ((v - minVal) / range) * 36;
+                                return `${x.toFixed(1)},${y.toFixed(1)}`;
+                            }).join(' ');
+                            sparkSvg = `
+                                <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-size:10px; color:#94a3b8; margin-bottom:2px;">Ciclo de Marea Reciente:</div>
+                                    <svg viewBox="0 0 220 44" style="width:100%; height:44px; display:block;">
+                                        <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${points}" />
+                                    </svg>
+                                </div>
+                            `;
+                        }
+
+                        popup.setContent(`
+                            <div class="popup-info-box">
+                                <div class="popup-title">🌊 ${st.name}</div>
+                                <b>Costa:</b> ${st.coast}<br>
+                                <b>Nivel del Mar:</b> <span style="color:#38bdf8; font-size:13px; font-weight:700;">${sLevelM} m</span> (${sLevelCm} cm)<br>
+                                <b>Sensor:</b> ${sensor}<br>
+                                <b>Última Lectura:</b> ${timeStr} UTC<br>
+                                ${sparkSvg}
+                                <div style="font-size:9px; color:#64748b; margin-top:6px;">Fuente: Red Mareográfica UNESCO-IOC / INSIVUMEH</div>
+                            </div>
+                        `);
+                    } catch (e) {
+                        popup.setContent(`
+                            <div class="popup-info-box">
+                                <div class="popup-title">🌊 ${st.name}</div>
+                                <span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> No se pudo obtener la marea en tiempo real.</span>
+                            </div>
+                        `);
+                    }
+                });
+
+                tideLayerGroup.addLayer(marker);
+            });
+        }
+        initTideStations();
+
+        function toggleTides(forceState) {
+            tidesVisible = forceState !== undefined ? forceState : !tidesVisible;
+            const btn = document.getElementById('btnToggleTides');
+            if (btn) btn.classList.toggle('active', tidesVisible);
+
+            if (tidesVisible) {
+                if (!map.hasLayer(tideLayerGroup)) map.addLayer(tideLayerGroup);
+            } else {
+                if (map.hasLayer(tideLayerGroup)) map.removeLayer(tideLayerGroup);
             }
         }
 
