@@ -93,31 +93,55 @@ try:
     # 4. Pronóstico Numérico de Precipitación
     gfs = ee.ImageCollection("NOAA/GFS0P25").filterDate(date_gfs_start, date_gfs_end)
 
-    # 5. Modelo Digital de Elevación SRTM 90m para Downscaling Topoclimático (~300m efectivos)
-    #    Región de downscaling: Guatemala + franja de borde (fuera de ella se muestra ERA5-Land sin corrección)
-    downscale_geom = ee.Geometry.BBox(-93.5, 12.8, -87.5, 18.6)
-    srtm_dem = ee.Image("CGIAR/SRTM90_V4").select('elevation').clip(downscale_geom)
+    # 5. Modelo Digital de Elevación para Downscaling Topoclimático
+    #    Prioridad 1: DEM propio de 20 m subido como Asset (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m)
+    #    Prioridad 2: Capa precalculada de diferencia de elevación (projects/monitoreoclimaticoforestal/assets/delta_elevacion_era5land)
+    #    Prioridad 3 (Fallback instantáneo): SRTM 30 m (USGS/SRTMGL1_003) - ETOPO1 suavizado a malla ERA5 (~9 km)
+    existing_assets = set()
+    try:
+        asset_list = ee.data.listAssets({'parent': 'projects/monitoreoclimaticoforestal/assets'}).get('assets', [])
+        existing_assets = {a.get('name', '').split('/')[-1] for a in asset_list}
+    except Exception:
+        pass
+
+    coarse_dem = ee.Image("NOAA/NGDC/ETOPO1").select('bedrock').focalMean(5000, 'circle', 'meters')
+
+    if 'delta_elevacion_20m' in existing_assets:
+        print("✓ Usando capa precalculada delta_elevacion_20m (DEM propio 20 m)...", flush=True)
+        delta_elevation = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_20m").select(0).unmask(0)
+    elif 'DEM_Guatemala_20m' in existing_assets:
+        print("✓ Usando DEM propio de 20 m (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m)...", flush=True)
+        fine_dem = ee.Image("projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m").select(0)
+        delta_elevation = fine_dem.subtract(coarse_dem).unmask(0)
+        # Lanzar precalculado automático de delta_elevacion_20m una sola vez si aún no existe
+        try:
+            ee.batch.Export.image.toAsset(
+                image=delta_elevation.toFloat().rename('delta_elev'),
+                description='precalc_delta_elevacion_20m',
+                assetId='projects/monitoreoclimaticoforestal/assets/delta_elevacion_20m',
+                region=guatemala_geom,
+                scale=30,
+                maxPixels=1e9
+            ).start()
+            print("  → Exportando delta_elevacion_20m precalculado en segundo plano para corridas futuras.", flush=True)
+        except Exception:
+            pass
+    elif 'delta_elevacion_era5land' in existing_assets:
+        print("✓ Usando capa precalculada delta_elevacion_era5land...", flush=True)
+        delta_elevation = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_era5land").select(0).unmask(0)
+    else:
+        print("✓ Usando SRTM 30 m + ETOPO1 (downscaling instantáneo sin reduceResolution)...", flush=True)
+        fine_dem = ee.Image("USGS/SRTMGL1_003").select('elevation')
+        delta_elevation = fine_dem.subtract(coarse_dem).unmask(0)
 
     # Función para suavizado continuo y relleno de bordes
     def prep_layer(img):
         return img.unmask(img.focalMean(1, 'square', 'pixels')).resample('bicubic')
 
     # ── A. EXTRACCIÓN Y DOWNSCALING TOPOCLIMÁTICO DE DATOS EUROPEOS (ECMWF) ──
-    print("Aplicando Downscaling Topoclimático SRTM (~300 m) sobre ERA5-Land...", flush=True)
+    print("Aplicando Downscaling Topoclimático sobre ERA5-Land...", flush=True)
     recent_chirps_raw = chirps.sort('system:time_start', False).first().select('precipitation')
     recent_era5_raw = era5.sort('system:time_start', False).first()
-
-    # DEM de referencia agregado a la malla nativa de ERA5-Land (~11 km) en DOS pasos
-    # (90 m -> 1 km -> 0.1°) para no exceder el límite de píxeles de reduceResolution.
-    era5_proj = recent_era5_raw.select('temperature_2m').projection()
-    srtm_1km = srtm_dem.reduceResolution(reducer=ee.Reducer.mean(), maxPixels=512).reproject(
-        crs='EPSG:4326', scale=1000
-    )
-    srtm_coarse = srtm_1km.reduceResolution(reducer=ee.Reducer.mean(), maxPixels=512).reproject(
-        crs=era5_proj
-    ).resample('bilinear')
-    # Diferencia de elevación fina - gruesa (0 fuera de la región de downscaling)
-    delta_elevation = srtm_dem.subtract(srtm_coarse).unmask(0)
 
     # 1. Temperatura con gradiente adiabático ambiental (-0.0065 °C/m)
     temp_era5_c = recent_era5_raw.select('temperature_2m').resample('bicubic').subtract(273.15)
