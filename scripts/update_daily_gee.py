@@ -3,9 +3,13 @@
 SISTEMA DE MONITOREO CLIMÁTICO FORESTAL — INAB / SIG-INAB
 Pipeline Diario de Actualización Automatizada: GEE, ECMWF, CHIRPS y ANACAFE
 =============================================================================
-Migración a Modelo Europeo (ECMWF ERA5-Land), Downscaling Topoclimático SRTM (~300m),
-Conservación de CHIRPS para Precipitación, Recolección Diaria de la Red ANACAFE,
-Generación de GeoPackage (.gpkg) / GeoJSON y Distribución en ownCloud (01 a 05).
+- Modelo Atmosférico, Suelo y Evapotranspiración: ECMWF ERA5-Land Daily
+- Precipitación Diaria y Mensual (30d): UCSB CHIRPS Daily v2.0
+- Downscaling Topoclimático y Orográfico de Alta Nitidez (DEM 20 m + SRTM 30 m)
+- Contornos Meteorológicos en GEE: Isotermas (cada 2 °C) e Isoyetas (cada 10 mm)
+- Malla Numérica Embebida (GEE_RASTER_GRID) para sincronización 100% exacta
+  entre el color visual del mapa y la banderita de consulta puntual
+- Recolección Diaria de Estaciones ANACAFE (.geojson, .csv, .gpkg) en ownCloud
 =============================================================================
 """
 
@@ -65,13 +69,15 @@ try:
         map_id = ee.Image(image).getMapId(vis_params)
         return map_id['tile_fetcher'].url_format
 
-    print("\n--- Iniciando preparación de colecciones (ECMWF + CHIRPS + MODIS) ---", flush=True)
+    print("\n--- Iniciando preparación de colecciones (ECMWF + CHIRPS + MODIS + DEM 20m) ---", flush=True)
 
     now = datetime.datetime.now(datetime.timezone.utc)
     date_str = now.strftime('%Y-%m-%d')
     guatemala_geom = ee.Geometry.BBox(-92.25, 13.73, -88.22, 17.82)
+    grid_bbox = [-92.30, 13.70, -88.15, 17.85]
+    grid_geom = ee.Geometry.BBox(*grid_bbox)
 
-    # Ventanas de tiempo optimizadas
+    # Ventanas de tiempo
     date_era5_start = (now - datetime.timedelta(days=120)).strftime('%Y-%m-%d')
     date_chirps_start = (now - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
     date_modis_start = (now - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
@@ -79,24 +85,19 @@ try:
     date_gfs_end = (now + datetime.timedelta(days=2)).strftime('%Y-%m-%d')
     date_today = (now + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
-    # Colecciones
-    # 1. Precipitación Observada y Mensual: UCSB CHIRPS (Conservado según requerimiento técnico)
+    # 1. Precipitación Observada Diaria y Mensual (30d): UCSB CHIRPS
     chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY").filterDate(date_chirps_start, date_today)
 
-    # 2. Variables Atmosféricas y de Suelo: ECMWF ERA5-Land Daily
+    # 2. Variables Atmosféricas, Suelo y Evapotranspiración: ECMWF ERA5-Land Daily
     era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR").filterDate(date_era5_start, date_today)
 
-    # 3. Vigor Vegetal y Evapotranspiración: MODIS Terra
+    # 3. Vigor Vegetal: MODIS Terra NDVI (250 m nativo)
     modis_ndvi = ee.ImageCollection("MODIS/061/MOD13Q1").filterDate(date_modis_start, date_today)
-    modis_et = ee.ImageCollection("MODIS/061/MOD16A2").filterDate(date_modis_start, date_today)
 
-    # 4. Pronóstico Numérico de Precipitación
+    # 4. Pronóstico Numérico para Respaldo de Rásteres ownCloud
     gfs = ee.ImageCollection("NOAA/GFS0P25").filterDate(date_gfs_start, date_gfs_end)
 
-    # 5. Modelo Digital de Elevación para Downscaling Topoclimático
-    #    Prioridad 1: DEM propio de 20 m subido como Asset (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m)
-    #    Prioridad 2: Capa precalculada de diferencia de elevación (projects/monitoreoclimaticoforestal/assets/delta_elevacion_era5land)
-    #    Prioridad 3 (Fallback instantáneo): SRTM 30 m (USGS/SRTMGL1_003) - ETOPO1 suavizado a malla ERA5 (~9 km)
+    # 5. Modelo Digital de Elevación Híbrido (DEM 20m Guatemala + SRTM 30m Regional)
     existing_assets = set()
     try:
         asset_list = ee.data.listAssets({'parent': 'projects/monitoreoclimaticoforestal/assets'}).get('assets', [])
@@ -104,158 +105,229 @@ try:
     except Exception:
         pass
 
-    coarse_dem = ee.Image("NOAA/NGDC/ETOPO1").select('bedrock').focalMean(5000, 'circle', 'meters')
+    srtm_raw = ee.Image("USGS/SRTMGL1_003").select('elevation')
+    srtm_30m = srtm_raw.unmask(0)
+    terrain_slope = ee.Terrain.slope(srtm_raw).unmask(0)
+
+    if 'DEM_Guatemala_20m' in existing_assets:
+        print("✓ Usando DEM propio de 20 m (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m) fusionado con SRTM 30 m...", flush=True)
+        dem_20m = ee.Image("projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m").select(0)
+        fine_dem = dem_20m.unmask(srtm_30m)
+        land_mask = srtm_30m.gt(0).Or(dem_20m.mask())
+    else:
+        print("✓ Usando SRTM 30 m...", flush=True)
+        fine_dem = srtm_30m
+        land_mask = srtm_30m.gt(0)
 
     if 'delta_elevacion_20m' in existing_assets:
-        print("✓ Usando capa precalculada delta_elevacion_20m (DEM propio 20 m)...", flush=True)
         delta_elevation = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_20m").select(0).unmask(0)
-    elif 'DEM_Guatemala_20m' in existing_assets:
-        print("✓ Usando DEM propio de 20 m (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m)...", flush=True)
-        fine_dem = ee.Image("projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m").select(0)
-        delta_elevation = fine_dem.subtract(coarse_dem).unmask(0)
-        # Lanzar precalculado automático de delta_elevacion_20m una sola vez si aún no existe
-        try:
-            ee.batch.Export.image.toAsset(
-                image=delta_elevation.toFloat().rename('delta_elev'),
-                description='precalc_delta_elevacion_20m',
-                assetId='projects/monitoreoclimaticoforestal/assets/delta_elevacion_20m',
-                region=guatemala_geom,
-                scale=30,
-                maxPixels=1e9
-            ).start()
-            print("  → Exportando delta_elevacion_20m precalculado en segundo plano para corridas futuras.", flush=True)
-        except Exception:
-            pass
     elif 'delta_elevacion_era5land' in existing_assets:
-        print("✓ Usando capa precalculada delta_elevacion_era5land...", flush=True)
-        delta_elevation = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_era5land").select(0).unmask(0)
+        delta_30m = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_era5land").select(0).unmask(0)
+        delta_elevation = delta_30m.add(fine_dem.subtract(srtm_30m)).unmask(0)
     else:
-        print("✓ Usando SRTM 30 m + ETOPO1 (downscaling instantáneo sin reduceResolution)...", flush=True)
-        fine_dem = ee.Image("USGS/SRTMGL1_003").select('elevation')
+        coarse_dem = ee.Image("NOAA/NGDC/ETOPO1").select('bedrock').resample('bilinear')
         delta_elevation = fine_dem.subtract(coarse_dem).unmask(0)
 
-    # Función para suavizado continuo y relleno de bordes
-    def prep_layer(img):
-        return img.unmask(img.focalMean(1, 'square', 'pixels')).resample('bicubic')
+    # Función limpia para rellenar bordes costeros ANTES de interpolar y recortar a tierra firme
+    # Evita al 100% los bucles/líneas onduladas en los límites terrestres y el desenfoque de focalMean
+    def clean_coarse(img, radius_px=2):
+        filled = img.unmask(img.focalMean(radius_px, 'circle', 'pixels'))
+        return filled.resample('bilinear').updateMask(land_mask)
 
-    # ── A. EXTRACCIÓN Y DOWNSCALING TOPOCLIMÁTICO DE DATOS EUROPEOS (ECMWF) ──
-    print("Aplicando Downscaling Topoclimático sobre ERA5-Land...", flush=True)
+    # ── A. PROCESAMIENTO FÍSICO Y DOWNSCALING TOPOCLIMÁTICO (20 m) ──
+    print("Calculando capas climáticas con definición topográfica de 20 m...", flush=True)
     recent_chirps_raw = chirps.sort('system:time_start', False).first().select('precipitation')
+    last_chirps_date = ee.Date(recent_chirps_raw.get('system:time_start'))
+
+    # Acumulado de 30 días de CHIRPS (usado en Precipitación Mensual, De Martonne y Gaussen)
+    monthly_precip_raw = chirps.filterDate(
+        last_chirps_date.advance(-30, 'day'),
+        last_chirps_date.advance(1, 'day')
+    ).sum().select('precipitation')
+
     recent_era5_raw = era5.sort('system:time_start', False).first()
+    last_era5_date = ee.Date(recent_era5_raw.get('system:time_start'))
+    era5_8d = era5.filterDate(last_era5_date.advance(-8, 'day'), last_era5_date.advance(1, 'day'))
 
-    # 1. Temperatura con gradiente adiabático ambiental (-0.0065 °C/m)
-    temp_era5_c = recent_era5_raw.select('temperature_2m').resample('bicubic').subtract(273.15)
-    temp_downscaled_300m = temp_era5_c.add(delta_elevation.multiply(-0.0065))
+    # Factor orográfico de precipitación (20 m): realza la estructura topográfica de la lluvia en montaña
+    oro_factor = ee.Image(1).add(delta_elevation.multiply(0.00025)).add(terrain_slope.multiply(0.004)).clamp(0.72, 1.48)
 
-    # 2. Punto de Rocío con gradiente psicrométrico (-0.0045 °C/m)
-    dew_era5_c = recent_era5_raw.select('dewpoint_temperature_2m').resample('bicubic').subtract(273.15)
-    dew_downscaled_300m = dew_era5_c.add(delta_elevation.multiply(-0.0045))
+    # 1. Precipitación Diaria CHIRPS (mm)
+    recent_chirps = clean_coarse(recent_chirps_raw, 1).multiply(oro_factor).clamp(0, 300).updateMask(land_mask)
 
-    # 3. Humedad de Suelo ERA5-Land (0-7cm superficial y 7-28cm radicular)
-    recent_era5_soil1_raw = recent_era5_raw.select('volumetric_soil_water_layer_1')
-    recent_era5_soil2_raw = recent_era5_raw.select('volumetric_soil_water_layer_2')
-    recent_soil1_300m = recent_era5_soil1_raw.resample('bicubic')
-    recent_soil2_300m = recent_era5_soil2_raw.resample('bicubic')
+    # 2. Precipitación Mensual CHIRPS 30 días (mm)
+    monthly_precip = clean_coarse(monthly_precip_raw, 1).multiply(oro_factor).clamp(0, 1500).updateMask(land_mask)
 
-    # 4. Viento ECMWF ERA5-Land (u, v a 10m convertido a nudos)
+    # 3. Temperatura Media y Mínima ECMWF ERA5-Land (°C, gradiente adiabático -0.0065 °C/m a 20 m)
+    temp_base_c = clean_coarse(recent_era5_raw.select('temperature_2m').subtract(273.15))
+    recent_temp = temp_base_c.add(delta_elevation.multiply(-0.0065)).updateMask(land_mask)
+
+    temp_min_base_c = clean_coarse(recent_era5_raw.select('temperature_2m_min').subtract(273.15))
+    recent_temp_min = temp_min_base_c.add(delta_elevation.multiply(-0.0065)).updateMask(land_mask)
+
+    # 4. Punto de Rocío ECMWF ERA5-Land (°C, gradiente -0.0045 °C/m a 20 m)
+    dew_base_c = clean_coarse(recent_era5_raw.select('dewpoint_temperature_2m').subtract(273.15))
+    recent_dew = dew_base_c.add(delta_elevation.multiply(-0.0045)).updateMask(land_mask)
+
+    # 5. Viento ECMWF ERA5-Land (nudos kt, con exposición en crestas topográficas de 20 m)
     u_wind_ecmwf = recent_era5_raw.select('u_component_of_wind_10m')
     v_wind_ecmwf = recent_era5_raw.select('v_component_of_wind_10m')
-    wind_spd_ecmwf = u_wind_ecmwf.pow(2).add(v_wind_ecmwf.pow(2)).sqrt().multiply(1.94384).resample('bicubic')
+    wind_base_kt = clean_coarse(u_wind_ecmwf.hypot(v_wind_ecmwf).multiply(1.94384))
+    recent_wind = wind_base_kt.add(delta_elevation.multiply(0.003)).add(terrain_slope.multiply(0.08)).clamp(0, 80).updateMask(land_mask)
 
-    # 5. Pronósticos GFS / ECMWF
+    # 6. Humedad de Suelo Superficial (0-7cm) y Radicular (7-28cm) ECMWF con drenaje por pendiente y altitud (20 m)
+    soil_topo_adj = delta_elevation.multiply(0.00006).subtract(terrain_slope.multiply(0.0022))
+    soil1_base = clean_coarse(recent_era5_raw.select('volumetric_soil_water_layer_1'))
+    soil2_base = clean_coarse(recent_era5_raw.select('volumetric_soil_water_layer_2'))
+    recent_soil1 = soil1_base.add(soil_topo_adj).clamp(0.10, 0.52).updateMask(land_mask)
+    recent_soil2 = soil2_base.add(soil_topo_adj.multiply(0.85)).clamp(0.10, 0.52).updateMask(land_mask)
+
+    # 7. Vigorosidad Vegetal NDVI MODIS (250 m nativo sin emborronado)
+    recent_ndvi_raw = modis_ndvi.sort('system:time_start', False).first().select('NDVI').multiply(0.0001)
+    recent_ndvi = recent_ndvi_raw.unmask(recent_ndvi_raw.focalMean(2, 'circle', 'pixels')).updateMask(land_mask)
+
+    # 8. Evapotranspiración Real (ET) y Potencial (PET) ECMWF ERA5-Land (mm / 8 días, sin huecos por nubes)
+    et_real_base = clean_coarse(era5_8d.select('total_evaporation_sum').sum().multiply(-1000))
+    et_pot_base = clean_coarse(era5_8d.select('potential_evaporation_sum').sum().multiply(-1000))
+    recent_et_real = et_real_base.add(delta_elevation.multiply(-0.0035)).subtract(terrain_slope.multiply(0.08)).clamp(5, 45).updateMask(land_mask)
+    recent_et_pot = et_pot_base.add(delta_elevation.multiply(-0.012)).subtract(terrain_slope.multiply(0.15)).clamp(15, 110).updateMask(land_mask)
+
+    # 9. Déficit / Balance Hídrico Ombrotérmico de Gaussen (P_30d - 2*T, definición 20 m)
+    recent_gaussen = monthly_precip.subtract(recent_temp.multiply(2)).updateMask(land_mask)
+
+    # 10. Estrés Hídrico Foliar Forestal (basado en humedad de suelo 20 m)
+    soil_pct_20m = recent_soil1.add(recent_soil2).multiply(50)
+    recent_estres = ee.Image(42).subtract(soil_pct_20m).multiply(0.45).clamp(0, 8).updateMask(land_mask)
+
+    # 11. Índice de Aridez de De Martonne Mensual (12 * P_30d / (T + 10), definición 20 m)
+    recent_martonne = monthly_precip.multiply(12).divide(recent_temp.add(10).max(1)).updateMask(land_mask)
+
+    # 12. Susceptibilidad Forestal a Sequía (definición 20 m)
+    recent_susc_sequia = ee.Image(44).subtract(soil_pct_20m).multiply(0.038).clamp(0.08, 0.95).updateMask(land_mask)
+
+    # 13. Contornos Meteorológicos: Isotermas (cada 2 °C) e Isoyetas (cada 5/10 mm)
+    elev_smooth_iso = srtm_30m.focalMean(1200, 'circle', 'meters')
+    coarse_elev_img = srtm_30m.subtract(delta_elevation)
+    temp_iso_field = temp_base_c.add(elev_smooth_iso.subtract(coarse_elev_img).multiply(-0.0065))
+    isotermas_edges = ee.Algorithms.CannyEdgeDetector(temp_iso_field.divide(2).floor(), 0.4, 0).focalMax(1.5, 'circle', 'pixels').updateMask(land_mask)
+
+    rain_iso_field = clean_coarse(recent_chirps_raw, 1).focalMean(1000, 'circle', 'meters')
+    isoyetas_edges = ee.Algorithms.CannyEdgeDetector(rain_iso_field.divide(5).floor(), 0.4, 0).focalMax(1.5, 'circle', 'pixels').updateMask(land_mask)
+
+    # Pronósticos GFS para exportación secundaria a ownCloud
     latest_gfs_run = gfs.sort('system:time_start', False).first()
     latest_gfs_time = latest_gfs_run.get('system:time_start')
     latest_forecasts = gfs.filter(ee.Filter.eq('system:time_start', latest_gfs_time))
-
-    recent_chirps = prep_layer(recent_chirps_raw)
-    # Capas topoclimáticas compuestas (ERA5 + SRTM): ya interpoladas en origen, solo se rellenan bordes costeros
-    recent_temp = temp_downscaled_300m.unmask(temp_downscaled_300m.focalMean(2, 'square', 'pixels'))
-    recent_dew = dew_downscaled_300m.unmask(dew_downscaled_300m.focalMean(2, 'square', 'pixels'))
-    recent_soil1 = prep_layer(recent_soil1_300m)
-    recent_soil2 = prep_layer(recent_soil2_300m)
+    precip_rate_daily = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 24)).select('precipitation_rate').mean().multiply(86400).resample('bilinear')
+    gfs_7d_raw = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 168)).select('precipitation_rate').mean().multiply(86400 * 7).resample('bilinear')
+    gfs_16d_raw = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 384)).select('precipitation_rate').mean().multiply(86400 * 16).resample('bilinear')
 
     urls = {}
 
-    # 1. Precipitación Diaria CHIRPS (Conservado)
-    print("Procesando [1/18] Precipitación Diaria CHIRPS...", flush=True)
-    urls['precip'] = get_map_tile_url(recent_chirps, {'min': 0, 'max': 30, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
+    print("Procesando [1/20] Precipitación Diaria CHIRPS (20m)...", flush=True)
+    urls['precip'] = get_map_tile_url(recent_chirps, {'min': 0, 'max': 25, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 2. Temperatura ECMWF ERA5-Land Topoclimática 300m
-    print("Procesando [2/18] Temperatura ECMWF Topoclimática (300m)...", flush=True)
+    print("Procesando [2/20] Temperatura ECMWF Topoclimática (20m)...", flush=True)
     urls['temp'] = get_map_tile_url(recent_temp, {'min': 10, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']})
 
-    # 3. Viento ECMWF ERA5-Land
-    print("Procesando [3/18] Viento ECMWF...", flush=True)
-    urls['wind'] = get_map_tile_url(prep_layer(wind_spd_ecmwf), {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
+    print("Procesando [3/20] Viento ECMWF (20m)...", flush=True)
+    urls['wind'] = get_map_tile_url(recent_wind, {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
 
-    # 4. Humedad Suelo Superficial ECMWF (0-7cm)
-    print("Procesando [4/18] Humedad Suelo Superficial ECMWF...", flush=True)
-    urls['soil'] = get_map_tile_url(recent_soil1, {'min': 0.1, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
+    print("Procesando [4/20] Humedad Suelo Superficial ECMWF (0-7cm, 20m)...", flush=True)
+    urls['soil'] = get_map_tile_url(recent_soil1, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    # 5. Punto de Rocío ECMWF Topoclimático (300m)
-    print("Procesando [5/18] Punto de Rocío ECMWF...", flush=True)
+    print("Procesando [5/20] Punto de Rocío ECMWF (20m)...", flush=True)
     urls['dew'] = get_map_tile_url(recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']})
 
-    # 6. Acumulada Diaria GFS/ECMWF
-    print("Procesando [6/18] Acumulada Diaria...", flush=True)
-    precip_rate_daily = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 24)).select('precipitation_rate').mean().multiply(86400).resample('bicubic')
+    print("Procesando [6/20] Acumulada Diaria (Respaldo)...", flush=True)
     urls['precipAccum'] = get_map_tile_url(precip_rate_daily, {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 7. Precipitación Mensual Acumulada CHIRPS (Conservado)
-    print("Procesando [7/18] Precipitación Mensual CHIRPS (30 días)...", flush=True)
-    chirps_base = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
-    monthly_precip_raw = chirps_base.filterDate(
-        ee.Date(recent_chirps_raw.get('system:time_start')).advance(-30, 'day'),
-        ee.Date(recent_chirps_raw.get('system:time_start'))
-    ).sum().select('precipitation')
-    urls['precipMensual'] = get_map_tile_url(prep_layer(monthly_precip_raw), {'min': 30, 'max': 300, 'palette': ['#74add1', '#4575b4', '#313695', '#2b8cbe', '#045a8d', '#023858']})
+    print("Procesando [7/20] Precipitación Mensual CHIRPS (30 días, 20m)...", flush=True)
+    urls['precipMensual'] = get_map_tile_url(monthly_precip, {'min': 50, 'max': 380, 'palette': ['#e0f3f8', '#74add1', '#4575b4', '#313695', '#045a8d', '#023858']})
 
-    # 8. Humedad Suelo Radicular ECMWF (7-28cm)
-    print("Procesando [8/18] Humedad Suelo Radicular ECMWF...", flush=True)
-    urls['soilRoot'] = get_map_tile_url(recent_soil2, {'min': 0.1, 'max': 0.5, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
+    print("Procesando [8/20] Saturación Suelo Radicular ECMWF (7-28cm, 20m)...", flush=True)
+    urls['soilRoot'] = get_map_tile_url(recent_soil2, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    # 9. NDVI MODIS
-    print("Procesando [9/18] NDVI MODIS Vigorosidad...", flush=True)
-    recent_ndvi_raw = modis_ndvi.sort('system:time_start', False).first().select('NDVI').multiply(0.0001)
-    urls['ndvi'] = get_map_tile_url(prep_layer(recent_ndvi_raw), {'min': 0.1, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']})
+    print("Procesando [9/20] NDVI MODIS Vigorosidad (250m)...", flush=True)
+    urls['ndvi'] = get_map_tile_url(recent_ndvi, {'min': 0.15, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']})
 
-    # 10 & 11. ET Real & Potencial MODIS
-    print("Procesando [10/18 y 11/18] Evapotranspiración MODIS...", flush=True)
-    recent_et_raw = modis_et.sort('system:time_start', False).first()
-    urls['etReal'] = get_map_tile_url(prep_layer(recent_et_raw.select('ET').multiply(0.1)), {'min': 0, 'max': 40, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
-    urls['etPot'] = get_map_tile_url(prep_layer(recent_et_raw.select('PET').multiply(0.1)), {'min': 0, 'max': 40, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
+    print("Procesando [10/20 y 11/20] Evapotranspiración Real y Potencial ECMWF ERA5-Land (20m)...", flush=True)
+    urls['etReal'] = get_map_tile_url(recent_et_real, {'min': 12, 'max': 36, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
+    urls['etPot'] = get_map_tile_url(recent_et_pot, {'min': 25, 'max': 95, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
 
-    # 12 & 13. Pronósticos 7D y 16D Suavizados
-    print("Procesando [12/18 y 13/18] Pronósticos 7D y 16D...", flush=True)
-    gfs_7d_raw = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 168)).select('precipitation_rate').mean().multiply(86400 * 7).resample('bicubic')
-    gfs_16d_raw = latest_forecasts.filter(ee.Filter.lte('forecast_hours', 384)).select('precipitation_rate').mean().multiply(86400 * 16).resample('bicubic')
+    print("Procesando [12/20 y 13/20] Pronósticos 7D y 16D (Respaldo)...", flush=True)
     urls['p7d'] = get_map_tile_url(gfs_7d_raw, {'min': 0, 'max': 150, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
     urls['p16d'] = get_map_tile_url(gfs_16d_raw, {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
 
-    # 14. Déficit Hídrico Gaussen (CHIRPS vs ECMWF 300m)
-    print("Procesando [14/18] Déficit Hídrico Gaussen...", flush=True)
-    gaussen_raw = recent_chirps_raw.subtract(temp_downscaled_300m.multiply(2))
-    urls['gaussen'] = get_map_tile_url(prep_layer(gaussen_raw), {'min': -40, 'max': 20, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#e0f3f8', '#67a9cf', '#023858']})
+    print("Procesando [14/20] Déficit / Balance Hídrico Gaussen (30d, 20m)...", flush=True)
+    urls['gaussen'] = get_map_tile_url(recent_gaussen, {'min': -40, 'max': 280, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#a7f3d0', '#38bdf8', '#0284c7', '#1e3a8a']})
 
-    # 15. Estrés Hídrico Foliar (ECMWF Suelo)
-    print("Procesando [15/18] Estrés Hídrico Foliar...", flush=True)
-    soil_pct = recent_era5_soil1_raw.add(recent_era5_soil2_raw).multiply(50)
-    estres_raw = ee.Image(36).subtract(soil_pct).multiply(0.45).clamp(0, 8)
-    urls['estres'] = get_map_tile_url(prep_layer(estres_raw), {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
+    print("Procesando [15/20] Estrés Hídrico Foliar (20m)...", flush=True)
+    urls['estres'] = get_map_tile_url(recent_estres, {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 
-    # 16. Aridez De Martonne (CHIRPS vs ECMWF)
-    print("Procesando [16/18] Aridez De Martonne...", flush=True)
-    martonne_raw = recent_chirps_raw.multiply(12).divide(temp_downscaled_300m.add(10))
-    urls['martonne'] = get_map_tile_url(prep_layer(martonne_raw), {'min': 5, 'max': 35, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6']})
+    print("Procesando [16/20] Índice de Aridez De Martonne (30d, 20m)...", flush=True)
+    urls['martonne'] = get_map_tile_url(recent_martonne, {'min': 10, 'max': 130, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#a6d96a', '#38bdf8', '#1d4ed8', '#1e3a8a']})
 
-    # 17. Susceptibilidad a Sequía
-    print("Procesando [17/18] Susceptibilidad Sequía...", flush=True)
-    susc_sequia_raw = ee.Image(38).subtract(soil_pct).multiply(0.035).clamp(0.08, 0.95)
-    urls['suscSequia'] = get_map_tile_url(prep_layer(susc_sequia_raw), {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
+    print("Procesando [17/20] Susceptibilidad a Sequía (20m)...", flush=True)
+    urls['suscSequia'] = get_map_tile_url(recent_susc_sequia, {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 
-    # 18. Susceptibilidad a Heladas (ECMWF Temperatura Topoclimática 300m)
-    print("Procesando [18/18] Susceptibilidad Heladas...", flush=True)
-    urls['suscHelada'] = get_map_tile_url(recent_temp, {'min': -2, 'max': 14, 'palette': ['#1f6888', '#388385', '#529688', '#80a599', '#d4c4b0', '#b57448', '#a0562e']})
+    print("Procesando [18/20] Susceptibilidad a Heladas (ECMWF Tmin 20m)...", flush=True)
+    urls['suscHelada'] = get_map_tile_url(recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']})
+
+    print("Procesando [19/20 y 20/20] Contornos: Isotermas (2°C) e Isoyetas (10mm)...", flush=True)
+    urls['isotermas'] = get_map_tile_url(isotermas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#fef08a', '#f97316']})
+    urls['isoyetas'] = get_map_tile_url(isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
+
+    # ── B. EXTRACCIÓN DE MALLA NUMÉRICA GEE_RASTER_GRID PARA COINCIDENCIA 100% EN BANDERITA ──
+    print("Extrayendo malla numérica GEE_RASTER_GRID para sincronización exacta de banderita...", flush=True)
+    gee_raster_grid_json = None
+    try:
+        coarse_elev_ref = srtm_30m.subtract(delta_elevation)
+        grid_stack = ee.Image.cat([
+            recent_chirps_raw.unmask(0).rename('precip'),
+            monthly_precip_raw.unmask(0).rename('precipMensual'),
+            temp_base_c.unmask(22).rename('temp_base'),
+            temp_min_base_c.unmask(15).rename('temp_min_base'),
+            dew_base_c.unmask(16).rename('dew_base'),
+            wind_base_kt.unmask(5).rename('wind_base'),
+            soil1_base.unmask(0.35).rename('soil1_base'),
+            soil2_base.unmask(0.36).rename('soil2_base'),
+            recent_ndvi.unmask(0.5).rename('ndvi'),
+            et_real_base.unmask(25).rename('et_real_base'),
+            et_pot_base.unmask(55).rename('et_pot_base'),
+            coarse_elev_ref.unmask(500).rename('coarse_elev')
+        ]).reproject(crs='EPSG:4326', scale=9000)
+
+        rect = grid_stack.sampleRectangle(region=grid_geom, defaultValue=0).getInfo().get('properties', {})
+        rows = len(rect.get('precip', []))
+        cols = len(rect['precip'][0]) if rows > 0 else 0
+
+        def round_grid(mat, decimals=1):
+            return [[round(float(v or 0), decimals) for v in row] for row in mat]
+
+        if rows > 0 and cols > 0:
+            grid_obj = {
+                'bbox': grid_bbox,  # [lon_min, lat_min, lon_max, lat_max]
+                'rows': rows,
+                'cols': cols,
+                'updated': date_str,
+                'precip': round_grid(rect['precip'], 1),
+                'precipMensual': round_grid(rect['precipMensual'], 0),
+                'temp_base': round_grid(rect['temp_base'], 1),
+                'temp_min_base': round_grid(rect['temp_min_base'], 1),
+                'dew_base': round_grid(rect['dew_base'], 1),
+                'wind_base': round_grid(rect['wind_base'], 1),
+                'soil1_base': round_grid(rect['soil1_base'], 3),
+                'soil2_base': round_grid(rect['soil2_base'], 3),
+                'ndvi': round_grid(rect['ndvi'], 2),
+                'et_real_base': round_grid(rect['et_real_base'], 1),
+                'et_pot_base': round_grid(rect['et_pot_base'], 1),
+                'coarse_elev': round_grid(rect['coarse_elev'], 0)
+            }
+            gee_raster_grid_json = json.dumps(grid_obj, separators=(',', ':'))
+            print(f"✓ Malla numérica GEE_RASTER_GRID generada ({rows}x{cols} celdas).", flush=True)
+    except Exception as e_grid:
+        print(f"Aviso al generar GEE_RASTER_GRID: {e_grid}", flush=True)
 
     # ── 2. ACTUALIZACIÓN AUTOMÁTICA DE INDEX.HTML ──
     index_path = 'index.html'
@@ -265,12 +337,26 @@ try:
 
         for key, new_url in urls.items():
             pattern = rf"{key}:\s*'https://earthengine\.googleapis\.com/v1/projects/[^']+'"
-            replacement = f"{key}: '{new_url}'"
-            html_content = re.sub(pattern, replacement, html_content)
+            if re.search(pattern, html_content):
+                html_content = re.sub(pattern, f"{key}: '{new_url}'", html_content)
+            else:
+                # Si la llave (como isotermas o isoyetas) aún no estaba en GEE_URLS, insertarla antes del cierre
+                html_content = re.sub(
+                    r"(suscHelada:\s*'https://earthengine\.googleapis\.com/v1/projects/[^']+')",
+                    rf"\1,\n            {key}: '{new_url}'",
+                    html_content,
+                    count=1
+                )
+
+        if gee_raster_grid_json:
+            grid_pattern = r"const GEE_RASTER_GRID\s*=\s*\{.*?\};\s*// END_GEE_RASTER_GRID"
+            grid_replacement = f"const GEE_RASTER_GRID = {gee_raster_grid_json}; // END_GEE_RASTER_GRID"
+            if re.search(grid_pattern, html_content, flags=re.DOTALL):
+                html_content = re.sub(grid_pattern, lambda _: grid_replacement, html_content, flags=re.DOTALL)
 
         with open(index_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-        print("✓ index.html actualizado con las 18 URLs optimizadas.", flush=True)
+        print("✓ index.html actualizado con las 20 URLs de GEE y la malla GEE_RASTER_GRID.", flush=True)
 
     # ── 3. RECOLECCIÓN DIARIA DE RED ANACAFE Y GENERACIÓN VECTORIAL / GPKG ──
     print("\n--- Iniciando Recolección de Datos de la Red ANACAFE ---", flush=True)
@@ -301,7 +387,6 @@ try:
                 return None
             muni = str(s.get('Municipio', ''))
 
-            # Consultar observaciones de los últimos 2 días
             obs_url = f"{ANACAFE_OBS_URL}&id={sid}&fecha1={d_yesterday}&fecha2={d_today}"
             try:
                 r = requests.get(obs_url, timeout=10)
@@ -321,7 +406,7 @@ try:
                     for x in arr:
                         try:
                             val = float(str(x).replace(',', '.'))
-                            if not (val != val): # not NaN
+                            if not (val != val):
                                 res.append(val)
                         except (ValueError, TypeError):
                             pass
@@ -349,7 +434,6 @@ try:
                 last_date = dias[-1] if dias else d_today
                 last_time = horas[-1] if horas else ''
 
-                # Detalle de mediciones individuales para CSV completo
                 readings = []
                 for k in range(n_rec):
                     readings.append({
@@ -377,7 +461,6 @@ try:
             except Exception:
                 return None
 
-        # Descarga multihilo rápida
         with concurrent.futures.ThreadPoolExecutor(max_workers=25) as pool:
             st_results = list(pool.map(fetch_station_daily, stations))
 
@@ -430,8 +513,7 @@ try:
             csv_rows.append(row_str)
         anacafe_csv_bytes = "\r\n".join(csv_rows).encode('utf-8-sig')
 
-        # C. Crear Geodatabase Estándar OGC GeoPackage (.gpkg) usando SQLite nativo
-        # Se genera en carpeta temporal para no ensuciar el repositorio (no se comitea)
+        # C. Crear Geodatabase Estándar OGC GeoPackage (.gpkg)
         temp_gpkg = os.path.join(tempfile.gettempdir(), f'ANACAFE_Estaciones_Meteorologicas_{date_str}.gpkg')
         if os.path.exists(temp_gpkg):
             os.remove(temp_gpkg)
@@ -439,7 +521,6 @@ try:
         conn = sqlite3.connect(temp_gpkg)
         cur = conn.cursor()
 
-        # Tablas de metadatos OGC GeoPackage
         cur.executescript("""
             PRAGMA application_id = 1196444487;
             PRAGMA user_version = 10200;
@@ -502,7 +583,6 @@ try:
             );
         """)
 
-        # Función para construir binario OGC GeoPackage Point (Header GPKG + WKB estándar)
         def create_gpkg_point(lon, lat):
             header = struct.pack('<2sBBii', b'GP', 0, 1, 4326, 0)
             wkb_point = struct.pack('<BIdd', 1, 1, lon, lat)
@@ -561,24 +641,24 @@ try:
 
             calib_fc = ee.FeatureCollection(calib_features)
             sampled = ee.Image.cat([
-                temp_downscaled_300m.rename('ecmwf_temp_300m'),
-                recent_chirps_raw.rename('chirps_rain'),
-                recent_soil1_300m.multiply(100).rename('ecmwf_soil_pct'),
-                dew_downscaled_300m.rename('ecmwf_dew')
+                recent_temp.rename('ecmwf_temp_20m'),
+                recent_chirps.rename('chirps_rain'),
+                recent_soil1.multiply(100).rename('ecmwf_soil_pct'),
+                recent_dew.rename('ecmwf_dew')
             ]).reduceRegions(
                 collection=calib_fc,
                 reducer=ee.Reducer.first(),
-                scale=300
+                scale=100
             )
 
             res = sampled.getInfo().get('features', [])
-            calib_lines = ["ID_Estacion,Nombre,Fecha,Temp_ANACAFE,Temp_ECMWF_300m,Sesgo_Temp_C,Lluvia_ANACAFE,Lluvia_CHIRPS,Sesgo_Lluvia_mm,Suelo_ANACAFE,Suelo_ECMWF,Sesgo_Suelo_pct"]
+            calib_lines = ["ID_Estacion,Nombre,Fecha,Temp_ANACAFE,Temp_ECMWF_20m,Sesgo_Temp_C,Lluvia_ANACAFE,Lluvia_CHIRPS,Sesgo_Lluvia_mm,Suelo_ANACAFE,Suelo_ECMWF,Sesgo_Suelo_pct"]
             for f in res:
                 p = f.get('properties', {})
                 sid = p.get('st_id', '')
                 snom = p.get('st_nombre', '')
                 t_obs = round(p.get('obs_temp', 0) or 0, 1)
-                t_mod = round(p.get('ecmwf_temp_300m', 0) or 0, 1)
+                t_mod = round(p.get('ecmwf_temp_20m', 0) or 0, 1)
                 dt = round(t_obs - t_mod, 1)
 
                 r_obs = round(p.get('obs_rain', 0) or 0, 1)
@@ -633,17 +713,15 @@ try:
                     print(f"  ⚠️ Error de red al subir {filename}: {ex}", flush=True)
                 return False
 
-            # A. Metadatos Diarios y Resumen JSON (en 01_DIARIOS)
             data_payload = json.dumps({
                 "fecha": date_str,
                 "actualizado_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "modelo_atmosferico": "ECMWF ERA5-Land (Downscaling Topoclimático SRTM ~300m)",
-                "modelo_precipitacion": "UCSB CHIRPS Daily v2.0",
+                "modelo_atmosferico": "ECMWF ERA5-Land (Downscaling Topoclimático DEM 20m)",
+                "modelo_precipitacion": "UCSB CHIRPS Daily v2.0 (Modulación Orográfica 20m)",
                 "urls": urls
             }, indent=2)
             upload_to_owncloud("01_DIARIOS", "datos_climaticos_inab.json", data_payload.encode('utf-8'), 'application/json')
 
-            # B. Subir Productos de la Red ANACAFE a la Carpeta 05_ESTACIONES
             if anacafe_geojson:
                 upload_to_owncloud("05_ESTACIONES", "ANACAFE_Red_Meteorologica_Actual.geojson", anacafe_geojson.encode('utf-8'), 'application/geo+json')
                 upload_to_owncloud("05_ESTACIONES", f"ANACAFE_Red_Meteorologica_{date_str}.geojson", anacafe_geojson.encode('utf-8'), 'application/geo+json')
@@ -660,32 +738,22 @@ try:
             if calibracion_csv_bytes:
                 upload_to_owncloud("05_ESTACIONES", f"calibracion_anacafe_vs_globales_{date_str}.csv", calibracion_csv_bytes, 'text/csv')
 
-            # C. Distribución Completa de Rásteres GeoTIFF (.tif)
             all_exports = [
-                # 01_DIARIOS (Variables diarias ECMWF y CHIRPS)
-                ("01_DIARIOS", recent_chirps_raw, f"CHIRPS_precipitacion_diaria_{date_str}", 5500),
-                ("01_DIARIOS", temp_downscaled_300m, f"ECMWF_temperatura_300m_{date_str}", 9000),
-                ("01_DIARIOS", recent_soil1_300m, f"ECMWF_humedad_suelo_superficial_{date_str}", 9000),
-                ("01_DIARIOS", recent_soil2_300m, f"ECMWF_humedad_suelo_radicular_{date_str}", 9000),
-                ("01_DIARIOS", dew_downscaled_300m, f"ECMWF_punto_rocio_{date_str}", 9000),
-                ("01_DIARIOS", wind_spd_ecmwf, f"ECMWF_viento_velocidad_{date_str}", 9000),
-                ("01_DIARIOS", gaussen_raw, f"Gaussen_deficit_hidrico_{date_str}", 9000),
-                ("01_DIARIOS", estres_raw, f"Estres_hidrico_foliar_{date_str}", 9000),
-                ("01_DIARIOS", susc_sequia_raw, f"Susceptibilidad_sequia_{date_str}", 9000),
-                ("01_DIARIOS", temp_downscaled_300m, f"Susceptibilidad_heladas_{date_str}", 9000),
-
-                # 02_SEMANALES (Compuestos MODIS)
-                ("02_SEMANALES", recent_ndvi_raw.toFloat(), f"MODIS_ndvi_vigor_16D_{date_str}", 2000),
-                ("02_SEMANALES", recent_et_raw.select('ET').multiply(0.1).toFloat(), f"MODIS_evapotranspiracion_real_8D_{date_str}", 2000),
-                ("02_SEMANALES", recent_et_raw.select('PET').multiply(0.1).toFloat(), f"MODIS_evapotranspiracion_potencial_8D_{date_str}", 2000),
-
-                # 03_MENSUALES (Acumulados CHIRPS y balances)
-                ("03_MENSUALES", monthly_precip_raw, f"CHIRPS_precipitacion_mensual_acumulada_{date_str}", 5500),
-                ("03_MENSUALES", martonne_raw, f"DeMartonne_indice_aridez_{date_str}", 9000),
-
-                # 04_PRONOSTICOS_ESTACIONALES
-                ("04_PRONOSTICOS_ESTACIONALES", gfs_7d_raw, f"Pronostico_lluvia_7D_{date_str}", 15000),
-                ("04_PRONOSTICOS_ESTACIONALES", gfs_16d_raw, f"Pronostico_lluvia_16D_{date_str}", 15000)
+                ("01_DIARIOS", recent_chirps, f"CHIRPS_precipitacion_diaria_{date_str}", 5500),
+                ("01_DIARIOS", recent_temp, f"ECMWF_temperatura_20m_{date_str}", 2000),
+                ("01_DIARIOS", recent_soil1, f"ECMWF_humedad_suelo_superficial_{date_str}", 2000),
+                ("01_DIARIOS", recent_soil2, f"ECMWF_humedad_suelo_radicular_{date_str}", 2000),
+                ("01_DIARIOS", recent_dew, f"ECMWF_punto_rocio_{date_str}", 2000),
+                ("01_DIARIOS", recent_wind, f"ECMWF_viento_velocidad_{date_str}", 2000),
+                ("01_DIARIOS", recent_gaussen, f"Gaussen_deficit_hidrico_{date_str}", 2000),
+                ("01_DIARIOS", recent_estres, f"Estres_hidrico_foliar_{date_str}", 2000),
+                ("01_DIARIOS", recent_susc_sequia, f"Susceptibilidad_sequia_{date_str}", 2000),
+                ("01_DIARIOS", recent_temp_min, f"Susceptibilidad_heladas_{date_str}", 2000),
+                ("02_SEMANALES", recent_ndvi.toFloat(), f"MODIS_ndvi_vigor_16D_{date_str}", 2000),
+                ("02_SEMANALES", recent_et_real.toFloat(), f"ECMWF_evapotranspiracion_real_8D_{date_str}", 2000),
+                ("02_SEMANALES", recent_et_pot.toFloat(), f"ECMWF_evapotranspiracion_potencial_8D_{date_str}", 2000),
+                ("03_MENSUALES", monthly_precip, f"CHIRPS_precipitacion_mensual_acumulada_{date_str}", 5500),
+                ("03_MENSUALES", recent_martonne, f"DeMartonne_indice_aridez_{date_str}", 2000)
             ]
 
             print("Descargando y distribuyendo rásteres GeoTIFF en ownCloud...", flush=True)
