@@ -17,6 +17,7 @@ import datetime
 import traceback
 import sqlite3
 import struct
+import tempfile
 import concurrent.futures
 import requests
 import ee
@@ -92,8 +93,10 @@ try:
     # 4. Pronóstico Numérico de Precipitación
     gfs = ee.ImageCollection("NOAA/GFS0P25").filterDate(date_gfs_start, date_gfs_end)
 
-    # 5. Modelo Digital de Elevación SRTM 30m para Downscaling Topoclimático a ~300m
-    srtm_dem = ee.Image("USGS/SRTMGL1_003").clip(guatemala_geom)
+    # 5. Modelo Digital de Elevación SRTM 90m para Downscaling Topoclimático (~300m efectivos)
+    #    Región de downscaling: Guatemala + franja de borde (fuera de ella se muestra ERA5-Land sin corrección)
+    downscale_geom = ee.Geometry.BBox(-93.5, 12.8, -87.5, 18.6)
+    srtm_dem = ee.Image("CGIAR/SRTM90_V4").select('elevation').clip(downscale_geom)
 
     # Función para suavizado continuo y relleno de bordes
     def prep_layer(img):
@@ -104,19 +107,25 @@ try:
     recent_chirps_raw = chirps.sort('system:time_start', False).first().select('precipitation')
     recent_era5_raw = era5.sort('system:time_start', False).first()
 
-    # DEM ERA5 de referencia suavizado a resolución nativa (~9 km)
-    srtm_coarse = srtm_dem.reduceResolution(reducer=ee.Reducer.mean(), maxPixels=1024).reproject(
-        crs=recent_era5_raw.select('temperature_2m').projection()
+    # DEM de referencia agregado a la malla nativa de ERA5-Land (~11 km) en DOS pasos
+    # (90 m -> 1 km -> 0.1°) para no exceder el límite de píxeles de reduceResolution.
+    era5_proj = recent_era5_raw.select('temperature_2m').projection()
+    srtm_1km = srtm_dem.reduceResolution(reducer=ee.Reducer.mean(), maxPixels=512).reproject(
+        crs='EPSG:4326', scale=1000
     )
-    delta_elevation = srtm_dem.subtract(srtm_coarse)
+    srtm_coarse = srtm_1km.reduceResolution(reducer=ee.Reducer.mean(), maxPixels=512).reproject(
+        crs=era5_proj
+    ).resample('bilinear')
+    # Diferencia de elevación fina - gruesa (0 fuera de la región de downscaling)
+    delta_elevation = srtm_dem.subtract(srtm_coarse).unmask(0)
 
     # 1. Temperatura con gradiente adiabático ambiental (-0.0065 °C/m)
-    temp_era5_c = recent_era5_raw.select('temperature_2m').subtract(273.15)
-    temp_downscaled_300m = temp_era5_c.add(delta_elevation.multiply(-0.0065)).resample('bicubic')
+    temp_era5_c = recent_era5_raw.select('temperature_2m').resample('bicubic').subtract(273.15)
+    temp_downscaled_300m = temp_era5_c.add(delta_elevation.multiply(-0.0065))
 
     # 2. Punto de Rocío con gradiente psicrométrico (-0.0045 °C/m)
-    dew_era5_c = recent_era5_raw.select('dewpoint_temperature_2m').subtract(273.15)
-    dew_downscaled_300m = dew_era5_c.add(delta_elevation.multiply(-0.0045)).resample('bicubic')
+    dew_era5_c = recent_era5_raw.select('dewpoint_temperature_2m').resample('bicubic').subtract(273.15)
+    dew_downscaled_300m = dew_era5_c.add(delta_elevation.multiply(-0.0045))
 
     # 3. Humedad de Suelo ERA5-Land (0-7cm superficial y 7-28cm radicular)
     recent_era5_soil1_raw = recent_era5_raw.select('volumetric_soil_water_layer_1')
@@ -135,8 +144,9 @@ try:
     latest_forecasts = gfs.filter(ee.Filter.eq('system:time_start', latest_gfs_time))
 
     recent_chirps = prep_layer(recent_chirps_raw)
-    recent_temp = prep_layer(temp_downscaled_300m)
-    recent_dew = prep_layer(dew_downscaled_300m)
+    # Capas topoclimáticas compuestas (ERA5 + SRTM): ya interpoladas en origen, solo se rellenan bordes costeros
+    recent_temp = temp_downscaled_300m.unmask(temp_downscaled_300m.focalMean(2, 'square', 'pixels'))
+    recent_dew = dew_downscaled_300m.unmask(dew_downscaled_300m.focalMean(2, 'square', 'pixels'))
     recent_soil1 = prep_layer(recent_soil1_300m)
     recent_soil2 = prep_layer(recent_soil2_300m)
 
@@ -397,7 +407,8 @@ try:
         anacafe_csv_bytes = "\r\n".join(csv_rows).encode('utf-8-sig')
 
         # C. Crear Geodatabase Estándar OGC GeoPackage (.gpkg) usando SQLite nativo
-        temp_gpkg = f'ANACAFE_Estaciones_Meteorologicas_{date_str}.gpkg'
+        # Se genera en carpeta temporal para no ensuciar el repositorio (no se comitea)
+        temp_gpkg = os.path.join(tempfile.gettempdir(), f'ANACAFE_Estaciones_Meteorologicas_{date_str}.gpkg')
         if os.path.exists(temp_gpkg):
             os.remove(temp_gpkg)
 
