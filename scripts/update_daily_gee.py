@@ -163,16 +163,19 @@ rain_factor = monthly_precip.divide(300).clamp(0, 1)
 veg_protection = ee.Image(1.2).subtract(recent_ndvi.multiply(0.4)).clamp(0.7, 1.2)
 recent_susc_desliz = slope_factor.multiply(0.45).add(soil_sat_factor.multiply(0.30)).add(rain_factor.multiply(0.25)).multiply(veg_protection).clamp(0.05, 0.95).updateMask(land_mask)
 
-# Calidad del Aire Copernicus Sentinel-5P (Índice de Aerosoles UV)
-# Promediar los pases orbitales recientes sobre Guatemala para garantizar cobertura total continua
-recent_cams_raw = copernicus_aer.select('absorbing_aerosol_index').mean()
+# Calidad del Aire Copernicus Sentinel-5P (Material Particulado PM2.5 estimado en µg/m³)
+# Fusión temporal de pases sobre Guatemala con proyección nativa fija para evitar errores de remuestreo en GEE
+recent_cams_raw = copernicus_aer.select('absorbing_aerosol_index').mean().setDefaultProjection('EPSG:4326', None, 5500)
 
-# Calibración barométrica con el DEM (100m) y remuestreo fino:
-# La masa de la columna troposférica y concentración de aerosoles disminuyen con la altitud
-# Las depresiones y valles retienen aerosoles; las cumbres montañosas presentan atmósfera más limpia
+# Calibración barométrica con el DEM (100m) y remuestreo bilineal continuo:
+# Modula la concentración según la columna de aire del terreno (valles retienen más partículas que cumbres altas)
 elev_scale = fine_dem.divide(3200).multiply(-1).exp().clamp(0.35, 1.15)
-cams_filled = recent_cams_raw.unmask(recent_cams_raw.focalMean(3, 'circle', 'pixels')).resample('bicubic')
-recent_cams_air = cams_filled.multiply(elev_scale).clamp(-0.8, 3.5).updateMask(land_mask)
+cams_filled = recent_cams_raw.unmask(recent_cams_raw.focalMean(2, 'circle', 'pixels')).resample('bilinear')
+
+# Conversión a concentración estimada de material particulado PM2.5 (µg/m³):
+# Rango biofísico: 5 µg/m³ (excelente) a >65 µg/m³ (insalubre/humo)
+recent_pm25 = cams_filled.add(0.6).multiply(28.0).multiply(elev_scale).clamp(2.0, 95.0).updateMask(land_mask)
+recent_cams_air = recent_pm25
 
 # Contornos delgados (1px) - Solo Isoyetas (10mm)
 rain_iso_field = clean_coarse(recent_chirps_raw, 1).focalMean(1000, 'circle', 'meters')
@@ -196,7 +199,7 @@ urls['martonne'] = get_map_tile_url(recent_martonne, {'min': 10, 'max': 130, 'pa
 urls['suscSequia'] = get_map_tile_url(recent_susc_sequia, {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 urls['suscHelada'] = get_map_tile_url(recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']})
 urls['suscDeslizamiento'] = get_map_tile_url(recent_susc_desliz, {'min': 0.1, 'max': 0.85, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
-urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': -0.6, 'max': 2.0, 'palette': ['#15803d', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#7f1d1d']})
+urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': 5.0, 'max': 65.0, 'palette': ['#15803d', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#7f1d1d']})
 urls['isoyetas'] = get_map_tile_url(isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
 
 # Malla numérica GEE_RASTER_GRID
@@ -214,7 +217,7 @@ grid_multiband = ee.Image.cat([
     et_real_base.unmask(25).rename('et_real_base'),
     et_pot_base.unmask(55).rename('et_pot_base'),
     recent_susc_desliz.unmask(0.2).rename('susc_desliz'),
-    recent_cams_air.unmask(0.5).rename('calidad_aire'),
+    recent_cams_air.unmask(12.0).rename('calidad_aire'),
     coarse_elev_ref.unmask(500).rename('coarse_elev')
 ]).clip(inab_buffer_geom)
 
