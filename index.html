@@ -1036,6 +1036,10 @@
 
         <h4 style="margin-top:10px;"><i class="fa-solid fa-mountain"></i> Relieve 3D & Mapa Base</h4>
         <label class="drawer-checkbox-item">
+            <input type="checkbox" id="chkBoundaries" checked onchange="toggleBoundaries(this.checked)">
+            <span>Límites y Países del Mundo</span>
+        </label>
+        <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkHillshade" checked onchange="toggleHillshade(this.checked)">
             <span>Relieve 3D</span>
         </label>
@@ -1183,27 +1187,24 @@
         const BASE_INAB = 'https://sig.inab.gob.gt/server/rest/services/Hosted';
 
         // 1. DICCIONARIO DE CAPAS GEE (20 URLS OFICIALES INCLUYENDO ISOTERMAS E ISOYETAS)
-        const GEE_URLS = {
-            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/64bcf6a60b05c4e36c7186ae7aa4c0dc-6d9dcd1a645e8ccf731c5e999168981b/tiles/{z}/{x}/{y}',
-            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/4f72ef1b553494540368f25b112d4807-3cf9abf02493f34f06490632c3e69f96/tiles/{z}/{x}/{y}',
-            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/cc462a4f27726addf04584cc9b009676-6496bf2e87011e72a8b212c2cb3b5a7f/tiles/{z}/{x}/{y}',
-            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/11b064f1361033fa6fdba68ee7f2a8e6-5e981940353065983b93ef3b59b7405a/tiles/{z}/{x}/{y}',
-            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/33d7ce4f351cc4d7832d0a8da452199e-1bcc23c5046b3baef9d0c564e890e9e9/tiles/{z}/{x}/{y}',
-            precipAccum: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/823a2f6f10bd0ecff43ab3879ec676d8-a61accacf2506ba6643d2c4f8c0ebd0d/tiles/{z}/{x}/{y}',
-            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d2b12a8c80b13f542f9185f1550de9dc-6928be04276eb843438ad72d895fb818/tiles/{z}/{x}/{y}',
-            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/adb7084c99fa125c0b6c5633e31d6f91-c34c2ef8523ff114d4d30cdb9e669f83/tiles/{z}/{x}/{y}',
-            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9546bf656aa88fbc946529c673995b39-feb9e70d4ef4d4efd1fb3590c2e5a758/tiles/{z}/{x}/{y}',
-            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/cd9d730ad8b346f26132f44dec538321-4461bb4992f4f491a5b798e15b817d5a/tiles/{z}/{x}/{y}',
-            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8ded29b7168120195d09d247ac03b32c-e69e04a9ec325fb5e2bb8bd15ff9a078/tiles/{z}/{x}/{y}',
-            p7d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/a88d58451d7a9a3f4c5bd789bde8c3e5-9e99c50afccb4de635646fc9a5ffb2cc/tiles/{z}/{x}/{y}',
-            p16d: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/b9bef7d7b2f6d600328297049cdabd5c-6c870c9fadc4decf3e6208fe7ae2d359/tiles/{z}/{x}/{y}',
-            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/4220ec7c7a93b1b0d77f88f5bf37754c-d986526f1a0473f9ccf00ab89002d851/tiles/{z}/{x}/{y}',
-            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/7566a21a5b0fdbb50df413d85898e5cb-00d9c11f5ede5f9ecd5bc0713cd360cb/tiles/{z}/{x}/{y}',
-            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/bf560c5228aedfa23e345794eddd110f-608fce701105db4464f854bd8c70b69d/tiles/{z}/{x}/{y}',
-            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/5a2912e1a124935db8d8a200ac22f181-15a15fe505f5d986f1a7f6c0f4fa6670/tiles/{z}/{x}/{y}',
-            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/448b0793b9754c7e0550699e30363264-64b05e714d9f0822bd59b9fee71e6b86/tiles/{z}/{x}/{y}',
-            isotermas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ba9ae1f46374833a2db6fd6baeb548be-8a6231fcb5e8d10221b15c05eccca287/tiles/{z}/{x}/{y}',
-            isoyetas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8f7b464cc05a922afc09996f4a5a4650-d46e1b0589bd2592e73051c1f885731a/tiles/{z}/{x}/{y}'
+                const GEE_URLS = {
+            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c6ef31003075adbd6e24db226454c52c-06f3850cc9d136843ed9aa98287a35f0/tiles/{z}/{x}/{y}',
+            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/7a36e01430077656d8b62dc805332258-67ea583847b7a0b3127c315c8df5117a/tiles/{z}/{x}/{y}',
+            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/002365f99937ec7989cf47317c944452-eb34a3bb4fd8653eb37c34111fb63848/tiles/{z}/{x}/{y}',
+            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/3eec5cdbdc23e2ba793b7179617a12cc-0717cfb66b53a727c85afefe7e10c7aa/tiles/{z}/{x}/{y}',
+            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/534248efe32cc5018845443f9cadb027-9b06623cc68e3a0550eef5bfed0c63ef/tiles/{z}/{x}/{y}',
+            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f5b0146aeef1bb6f0a800dfa4e8c4381-789e464bb77f1e82a1721dcfb8b809d7/tiles/{z}/{x}/{y}',
+            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ff5b466db581def8904de5bfd3384806-6875c50162e09ad37ef5147076d68f3c/tiles/{z}/{x}/{y}',
+            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/184472144bca1deae3144f67a393727f-f3224bf2e5f262a0ae5e1ec1fba6a458/tiles/{z}/{x}/{y}',
+            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f2e1b6e3ac53460de248f170ffdd97cc-19b8a3a82290b64fb6c3279e2c3a25ac/tiles/{z}/{x}/{y}',
+            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/061d8ca0b70e295511254ad70d8e970b-9de1c04ae56d9f176bbb8dc6ab3bcf1c/tiles/{z}/{x}/{y}',
+            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/1ace53f6d2404174da0aec6274b7c5a9-5ef9896c9ed4aa384fb15593835c0692/tiles/{z}/{x}/{y}',
+            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ff1151a56b7831c945f7cfb475b400c0-cd88d76dd2538091cba1dde7aee94782/tiles/{z}/{x}/{y}',
+            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/e2fe83a6e6919fe22a438cd38c8f0d41-a6ff269a2125d796a92ba17971320067/tiles/{z}/{x}/{y}',
+            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f8800a8f1f556c6404d548019b59d689-57e1942189113acd819b751df28fdca5/tiles/{z}/{x}/{y}',
+            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/0d43f91d928176c7e82e7aaf5b2e6915-e3f65a37f4bad3834b863caad187a9b0/tiles/{z}/{x}/{y}',
+            isotermas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/a44505070e4955f38c376d9243f1eee8-08c36bb432da1cca647686702328db34/tiles/{z}/{x}/{y}',
+            isoyetas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/246c22c29002ba37fbb589e36f233676-0c6e4ec541e33ff7fd7a8c85e7b7d0e6/tiles/{z}/{x}/{y}'
         };
 
         // MALLA NUMÉRICA SINCRONIZADA CON LAS CAPAS VISUALES DE GEE
@@ -1263,6 +1264,19 @@
         function toggleHillshade(isChecked) {
             if (isChecked) map.addLayer(hillshadeLayer);
             else map.removeLayer(hillshadeLayer);
+        }
+
+        // 3b. CAPA GLOBAL DE LÍMITES POLÍTICOS, PAÍSES Y ETIQUETAS (ESRI WORLD BOUNDARIES & PLACES)
+        const boundariesLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            pane: 'overlayPane',
+            zIndex: 450,
+            opacity: 0.95
+        }).addTo(map);
+
+        function toggleBoundaries(isChecked) {
+            if (isChecked) map.addLayer(boundariesLayer);
+            else map.removeLayer(boundariesLayer);
         }
 
         // 4. MAPAS BASE
@@ -1412,10 +1426,27 @@
 
         initWindAnimation();
 
-        // 7. CONTROL DE CAPA GEE ACTIVA
+                // ESTADO GLOBAL HOISTEADO (PREVIENE CUALQUIER ERROR TEMPORAL DEAD ZONE)
         let currentLayerOpacity = 0.88;
         let currentGeeLayer = null;
         let activeGeeKey = 'precip';
+
+        let currentClickLat = null;
+        let currentClickLon = null;
+        let lastPointElev = null;
+        let flagMarker = null;
+        let lastClickTimestamp = 0;
+        let forecastAbortCtrl = null;
+
+        let isotermasActive = false;
+        let isoyetasActive = false;
+        let isotermasTileLayer = null;
+        let isoyetasTileLayer = null;
+        const isotermasLabelGroup = L.layerGroup();
+        const isoyetasLabelGroup = L.layerGroup();
+
+        // 7. CONTROL DE CAPA GEE ACTIVA
+        
 
         function activateGeeLayer(key) {
             if (currentGeeLayer) map.removeLayer(currentGeeLayer);
@@ -1451,16 +1482,8 @@
             const ticksHtml = leg.ticks.map(t => `<span>${t}</span>`).join('');
             document.getElementById('legendTicks').innerHTML = ticksHtml;
         }
-
-        activateGeeLayer('precip');
-
         // 8. LÓGICA DE CONTORNOS (ISOTERMAS 2°C E ISOYETAS 10mm CON CAPAS GEE + ETIQUETAS)
-        let isotermasActive = false;
-        let isoyetasActive = false;
-        let isotermasTileLayer = null;
-        let isoyetasTileLayer = null;
-        const isotermasLabelGroup = L.layerGroup();
-        const isoyetasLabelGroup = L.layerGroup();
+        
 
         function buildContourLabels(type) {
             const group = type === 'isotermas' ? isotermasLabelGroup : isoyetasLabelGroup;
@@ -1577,12 +1600,7 @@
         }
 
         // 10. BANDERITA DE VALOR PUNTUAL (SINCRONIZACIÓN 100% CON LA CAPA VISUAL DE GEE) & PRONÓSTICO ECMWF
-        let currentClickLat = null;
-        let currentClickLon = null;
-        let lastPointElev = null;
-        let flagMarker = null;
-        let lastClickTimestamp = 0;
-        let forecastAbortCtrl = null;
+        
 
         function hexToRgb(hex) {
             const h = hex.replace('#', '');
@@ -2940,6 +2958,8 @@
                 if (map.hasLayer(tideLayerGroup)) map.removeLayer(tideLayerGroup);
             }
         }
+
+        activateGeeLayer('precip');
 
         // Iniciar carga de ANACAFE al cargar la página
         setTimeout(() => {
