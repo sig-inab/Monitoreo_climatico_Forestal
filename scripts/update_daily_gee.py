@@ -66,7 +66,9 @@ date_today = (now + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 chirps = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY").filterDate(date_chirps_start, date_today)
 era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR").filterDate(date_era5_start, date_today)
 modis_ndvi = ee.ImageCollection("MODIS/061/MOD13Q1").filterDate(date_modis_start, date_today)
-copernicus_aer = ee.ImageCollection("COPERNICUS/S5P/NRTI/L3_AER_AI").filterDate(date_s5p_start, date_today)
+copernicus_aer_nrti = ee.ImageCollection("COPERNICUS/S5P/NRTI/L3_AER_AI").filterDate(date_s5p_start, date_today).filterBounds(inab_buffer_geom)
+copernicus_aer_offl = ee.ImageCollection("COPERNICUS/S5P/OFFL/L3_AER_AI").filterDate(date_s5p_start, date_today).filterBounds(inab_buffer_geom)
+copernicus_aer = copernicus_aer_nrti.merge(copernicus_aer_offl)
 
 existing_assets = set()
 try:
@@ -161,8 +163,9 @@ rain_factor = monthly_precip.divide(300).clamp(0, 1)
 veg_protection = ee.Image(1.2).subtract(recent_ndvi.multiply(0.4)).clamp(0.7, 1.2)
 recent_susc_desliz = slope_factor.multiply(0.45).add(soil_sat_factor.multiply(0.30)).add(rain_factor.multiply(0.25)).multiply(veg_protection).clamp(0.05, 0.95).updateMask(land_mask)
 
-# Calidad del Aire Copernicus Sentinel-5P (CAMS)
-recent_cams_raw = copernicus_aer.sort('system:time_start', False).first().select('absorbing_aerosol_index')
+# Calidad del Aire Copernicus Sentinel-5P (Índice de Aerosoles UV)
+# Promediar los pases orbitales recientes sobre Guatemala para garantizar cobertura total continua
+recent_cams_raw = copernicus_aer.select('absorbing_aerosol_index').mean()
 recent_cams_air = clean_coarse(recent_cams_raw, 2).clamp(-1.0, 4.0).updateMask(land_mask)
 
 # Contornos delgados (1px) - Solo Isoyetas (10mm)
