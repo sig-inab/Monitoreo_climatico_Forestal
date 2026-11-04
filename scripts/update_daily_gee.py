@@ -165,12 +165,7 @@ recent_susc_desliz = slope_factor.multiply(0.45).add(soil_sat_factor.multiply(0.
 recent_cams_raw = copernicus_aer.sort('system:time_start', False).first().select('absorbing_aerosol_index')
 recent_cams_air = clean_coarse(recent_cams_raw, 2).clamp(-1.0, 4.0).updateMask(land_mask)
 
-# Contornos delgados (1px)
-elev_smooth_iso = srtm_30m.focalMean(1200, 'circle', 'meters')
-coarse_elev_img = srtm_30m.subtract(delta_elevation)
-temp_iso_field = temp_base_c.add(elev_smooth_iso.subtract(coarse_elev_img).multiply(-0.0065))
-isotermas_edges = ee.Algorithms.CannyEdgeDetector(temp_iso_field.divide(10).floor(), 0.4, 0).updateMask(land_mask)
-
+# Contornos delgados (1px) - Solo Isoyetas (10mm)
 rain_iso_field = clean_coarse(recent_chirps_raw, 1).focalMean(1000, 'circle', 'meters')
 isoyetas_edges = ee.Algorithms.CannyEdgeDetector(rain_iso_field.divide(10).floor(), 0.4, 0).updateMask(land_mask)
 
@@ -193,7 +188,6 @@ urls['suscSequia'] = get_map_tile_url(recent_susc_sequia, {'min': 0.1, 'max': 0.
 urls['suscHelada'] = get_map_tile_url(recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']})
 urls['suscDeslizamiento'] = get_map_tile_url(recent_susc_desliz, {'min': 0.1, 'max': 0.85, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
 urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': -0.5, 'max': 3.5, 'palette': ['#22c55e', '#a3e635', '#fef08a', '#f97316', '#ef4444', '#7f1d1d']})
-urls['isotermas'] = get_map_tile_url(isotermas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#fef08a', '#f97316']})
 urls['isoyetas'] = get_map_tile_url(isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
 
 # Malla numérica GEE_RASTER_GRID
