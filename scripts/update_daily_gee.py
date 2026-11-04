@@ -166,7 +166,13 @@ recent_susc_desliz = slope_factor.multiply(0.45).add(soil_sat_factor.multiply(0.
 # Calidad del Aire Copernicus Sentinel-5P (Índice de Aerosoles UV)
 # Promediar los pases orbitales recientes sobre Guatemala para garantizar cobertura total continua
 recent_cams_raw = copernicus_aer.select('absorbing_aerosol_index').mean()
-recent_cams_air = clean_coarse(recent_cams_raw, 2).clamp(-1.0, 4.0).updateMask(land_mask)
+
+# Calibración barométrica con el DEM (100m) y remuestreo fino:
+# La masa de la columna troposférica y concentración de aerosoles disminuyen con la altitud
+# Las depresiones y valles retienen aerosoles; las cumbres montañosas presentan atmósfera más limpia
+elev_scale = fine_dem.divide(3200).multiply(-1).exp().clamp(0.35, 1.15)
+cams_filled = recent_cams_raw.unmask(recent_cams_raw.focalMean(3, 'circle', 'pixels')).resample('bicubic')
+recent_cams_air = cams_filled.multiply(elev_scale).clamp(-0.8, 3.5).updateMask(land_mask)
 
 # Contornos delgados (1px) - Solo Isoyetas (10mm)
 rain_iso_field = clean_coarse(recent_chirps_raw, 1).focalMean(1000, 'circle', 'meters')
@@ -190,7 +196,7 @@ urls['martonne'] = get_map_tile_url(recent_martonne, {'min': 10, 'max': 130, 'pa
 urls['suscSequia'] = get_map_tile_url(recent_susc_sequia, {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
 urls['suscHelada'] = get_map_tile_url(recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']})
 urls['suscDeslizamiento'] = get_map_tile_url(recent_susc_desliz, {'min': 0.1, 'max': 0.85, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
-urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': -0.5, 'max': 3.5, 'palette': ['#22c55e', '#a3e635', '#fef08a', '#f97316', '#ef4444', '#7f1d1d']})
+urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': -0.6, 'max': 2.0, 'palette': ['#15803d', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#7f1d1d']})
 urls['isoyetas'] = get_map_tile_url(isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
 
 # Malla numérica GEE_RASTER_GRID
