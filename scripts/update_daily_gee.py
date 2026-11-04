@@ -65,8 +65,11 @@ def init_earth_engine():
 try:
     init_earth_engine()
 
+    guatemala_fc = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017").filter(ee.Filter.eq('country_na', 'Guatemala'))
+    guatemala_mask = ee.Image.constant(1).clip(guatemala_fc).mask()
+
     def get_map_tile_url(image, vis_params):
-        map_id = ee.Image(image).getMapId(vis_params)
+        map_id = ee.Image(image).clip(guatemala_fc).getMapId(vis_params)
         return map_id['tile_fetcher'].url_format
 
     print("\n--- Iniciando preparación de colecciones (ECMWF + CHIRPS + MODIS + DEM 20m) ---", flush=True)
@@ -113,11 +116,11 @@ try:
         print("✓ Usando DEM propio de 20 m (projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m) fusionado con SRTM 30 m...", flush=True)
         dem_20m = ee.Image("projects/monitoreoclimaticoforestal/assets/DEM_Guatemala_20m").select(0)
         fine_dem = dem_20m.unmask(srtm_30m)
-        land_mask = srtm_30m.gt(0).Or(dem_20m.mask())
+        land_mask = srtm_30m.gt(0).And(guatemala_mask)
     else:
         print("✓ Usando SRTM 30 m...", flush=True)
         fine_dem = srtm_30m
-        land_mask = srtm_30m.gt(0)
+        land_mask = srtm_30m.gt(0).And(guatemala_mask)
 
     if 'delta_elevacion_20m' in existing_assets:
         delta_elevation = ee.Image("projects/monitoreoclimaticoforestal/assets/delta_elevacion_20m").select(0).unmask(0)
@@ -182,9 +185,9 @@ try:
     recent_soil1 = soil1_base.add(soil_topo_adj).clamp(0.10, 0.52).updateMask(land_mask)
     recent_soil2 = soil2_base.add(soil_topo_adj.multiply(0.85)).clamp(0.10, 0.52).updateMask(land_mask)
 
-    # 7. Vigorosidad Vegetal NDVI MODIS (250 m nativo sin emborronado)
+    # 7. Vigorosidad Vegetal NDVI MODIS (250 m nativo reproyectado a WGS84 para evitar errores Sinusoidales)
     recent_ndvi_raw = modis_ndvi.sort('system:time_start', False).first().select('NDVI').multiply(0.0001)
-    recent_ndvi = recent_ndvi_raw.unmask(recent_ndvi_raw.focalMean(2, 'circle', 'pixels')).updateMask(land_mask)
+    recent_ndvi = recent_ndvi_raw.reproject('EPSG:4326', None, 250).updateMask(land_mask).clip(guatemala_fc)
 
     # 8. Evapotranspiración Real (ET) y Potencial (PET) ECMWF ERA5-Land (mm / 8 días, sin huecos por nubes)
     et_real_base = clean_coarse(era5_8d.select('total_evaporation_sum').sum().multiply(-1000))
@@ -236,30 +239,23 @@ try:
     print("Procesando [4/20] Humedad Suelo Superficial ECMWF (0-7cm, 20m)...", flush=True)
     urls['soil'] = get_map_tile_url(recent_soil1, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    print("Procesando [5/20] Punto de Rocío ECMWF (20m)...", flush=True)
+    print("Procesando [5/17] Punto de Rocío ECMWF (20m)...", flush=True)
     urls['dew'] = get_map_tile_url(recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']})
 
-    print("Procesando [6/20] Acumulada Diaria (Respaldo)...", flush=True)
-    urls['precipAccum'] = get_map_tile_url(precip_rate_daily, {'min': 0, 'max': 20, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
-
-    print("Procesando [7/20] Precipitación Mensual CHIRPS (30 días, 20m)...", flush=True)
+    print("Procesando [6/17] Precipitación Mensual CHIRPS (30 días, 20m)...", flush=True)
     urls['precipMensual'] = get_map_tile_url(monthly_precip, {'min': 50, 'max': 380, 'palette': ['#e0f3f8', '#74add1', '#4575b4', '#313695', '#045a8d', '#023858']})
 
-    print("Procesando [8/20] Saturación Suelo Radicular ECMWF (7-28cm, 20m)...", flush=True)
+    print("Procesando [7/17] Saturación Suelo Radicular ECMWF (7-28cm, 20m)...", flush=True)
     urls['soilRoot'] = get_map_tile_url(recent_soil2, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
 
-    print("Procesando [9/20] NDVI MODIS Vigorosidad (250m)...", flush=True)
+    print("Procesando [8/17] NDVI MODIS Vigorosidad (250m)...", flush=True)
     urls['ndvi'] = get_map_tile_url(recent_ndvi, {'min': 0.15, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']})
 
-    print("Procesando [10/20 y 11/20] Evapotranspiración Real y Potencial ECMWF ERA5-Land (20m)...", flush=True)
+    print("Procesando [9/17 y 10/17] Evapotranspiración Real y Potencial ECMWF ERA5-Land (20m)...", flush=True)
     urls['etReal'] = get_map_tile_url(recent_et_real, {'min': 12, 'max': 36, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
     urls['etPot'] = get_map_tile_url(recent_et_pot, {'min': 25, 'max': 95, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
 
-    print("Procesando [12/20 y 13/20] Pronósticos 7D y 16D (Respaldo)...", flush=True)
-    urls['p7d'] = get_map_tile_url(gfs_7d_raw, {'min': 0, 'max': 150, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
-    urls['p16d'] = get_map_tile_url(gfs_16d_raw, {'min': 0, 'max': 300, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
-
-    print("Procesando [14/20] Déficit / Balance Hídrico Gaussen (30d, 20m)...", flush=True)
+    print("Procesando [11/17] Déficit / Balance Hídrico Gaussen (30d, 20m)...", flush=True)
     urls['gaussen'] = get_map_tile_url(recent_gaussen, {'min': -40, 'max': 280, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#a7f3d0', '#38bdf8', '#0284c7', '#1e3a8a']})
 
     print("Procesando [15/20] Estrés Hídrico Foliar (20m)...", flush=True)
