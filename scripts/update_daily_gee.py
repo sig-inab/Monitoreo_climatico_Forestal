@@ -24,26 +24,20 @@ import ee
 # ── 1. AUTENTICACIÓN FLEXIBLE GEE (GITHUB ACTIONS SECRET + FALLBACK LOCAL) ──
 def init_earth_engine():
     key_secret = os.environ.get('GEE_SERVICE_ACCOUNT_KEY')
-    if key_secret:
-        print("✓ Autenticando con GitHub Secret GEE_SERVICE_ACCOUNT_KEY...", flush=True)
-        key_secret = key_secret.strip()
-        try:
-            sa_info = json.loads(key_secret)
-            email = sa_info.get('client_email', '')
-        except Exception:
-            email = ''
-        credentials = ee.ServiceAccountCredentials(email, key_data=key_secret)
-        ee.Initialize(credentials, project='monitoreoclimaticoforestal')
-    else:
-        local_key = r"d:\mercy.aguilar\Documents\CAMBIO_CLIMATICO\monitoreoclimaticoforestal-08a9fb17b31f.json"
-        if os.path.exists(local_key):
-            print(f"✓ Autenticando con clave local: {local_key}...", flush=True)
-            credentials = ee.ServiceAccountCredentials('', key_file=local_key)
-            ee.Initialize(credentials, project='monitoreoclimaticoforestal')
-        else:
-            raise FileNotFoundError(
-                "No se encontró clave GEE ni en variable de entorno GEE_SERVICE_ACCOUNT_KEY ni en ruta local."
-            )
+    if not key_secret:
+        raise ValueError(
+            "Variable de entorno GEE_SERVICE_ACCOUNT_KEY no encontrada. "
+            "Configure el secreto GEE_SERVICE_ACCOUNT_KEY en GitHub Actions o defina la variable en su entorno."
+        )
+    print("✓ Autenticando con secreto en memoria GEE_SERVICE_ACCOUNT_KEY...", flush=True)
+    key_secret = key_secret.strip()
+    try:
+        sa_info = json.loads(key_secret)
+        email = sa_info.get('client_email', '')
+    except Exception:
+        email = ''
+    credentials = ee.ServiceAccountCredentials(email, key_data=key_secret)
+    ee.Initialize(credentials, project='monitoreoclimaticoforestal')
 
 init_earth_engine()
 print("✓ Conexión establecida con Earth Engine (monitoreoclimaticoforestal).", flush=True)
@@ -269,7 +263,7 @@ index_paths = [
     'index.html',
     os.path.join(repo_root, 'index.html'),
     os.path.join(os.getcwd(), 'index.html'),
-    r"C:\Users\mercy.aguilar\.gemini\antigravity\brain\e84d3f6a-800e-4bd6-a4ba-dd09d0461c2f\index.html"
+    # Local brain path removed
 ]
 
 target_index = None
