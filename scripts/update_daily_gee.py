@@ -183,26 +183,98 @@ recent_cams_air = recent_pm25
 rain_iso_field = clean_coarse(recent_chirps_raw, 1).focalMean(1000, 'circle', 'meters')
 isoyetas_edges = ee.Algorithms.CannyEdgeDetector(rain_iso_field.divide(10).floor(), 0.4, 0).updateMask(land_mask)
 
+# ── 2.5 MATERIALIZACIÓN Y SERVICIO DESDE ASSETS DE GEE (PREVENCIÓN DE ERROR 429) ──
+# Agrupación de todas las capas biofísicas calibradas en un diccionario estructurado
+composite_layers = {
+    'precip': (recent_chirps, {'min': 0, 'max': 25, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']}),
+    'temp': (recent_temp, {'min': 10, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']}),
+    'wind': (recent_wind, {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']}),
+    'soil': (recent_soil1, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']}),
+    'dew': (recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']}),
+    'precipMensual': (monthly_precip, {'min': 50, 'max': 380, 'palette': ['#e0f3f8', '#74add1', '#4575b4', '#313695', '#045a8d', '#023858']}),
+    'soilRoot': (recent_soil2, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']}),
+    'ndvi': (recent_ndvi, {'min': 0.15, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']}),
+    'etReal': (recent_et_real, {'min': 12, 'max': 36, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']}),
+    'etPot': (recent_et_pot, {'min': 25, 'max': 95, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']}),
+    'gaussen': (recent_gaussen, {'min': -40, 'max': 280, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#a7f3d0', '#38bdf8', '#0284c7', '#1e3a8a']}),
+    'estres': (recent_estres, {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']}),
+    'martonne': (recent_martonne, {'min': 10, 'max': 130, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#a6d96a', '#38bdf8', '#1d4ed8', '#1e3a8a']}),
+    'suscSequia': (recent_susc_sequia, {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']}),
+    'suscHelada': (recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']}),
+    'suscDeslizamiento': (recent_susc_desliz, {'min': 0.1, 'max': 0.85, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']}),
+    'calidadAire': (recent_cams_air, {'min': 5.0, 'max': 45.0, 'palette': ['#15803d', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#7f1d1d']}),
+    'isoyetas': (isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
+}
+
+# 1. Composición multibanda unificada de todas las capas
+daily_multiband = ee.Image([img.rename(k) for k, (img, _) in composite_layers.items()]).clip(inab_buffer_geom)
+
+# 2. Gestión de exportación asíncrona hacia Asset fijo en Earth Engine
+DAILY_ASSET_ID = "projects/monitoreoclimaticoforestal/assets/clima_inab_diario"
+
+def trigger_asset_materialization(img):
+    try:
+        # Verificar si ya existe una tarea en curso para no duplicar en cola
+        active = False
+        try:
+            ops = ee.data.listOperations()
+            for op in ops:
+                desc = op.get('metadata', {}).get('description', '')
+                state = op.get('metadata', {}).get('state', '')
+                if 'clima_inab_diario' in desc and state in ('PENDING', 'RUNNING'):
+                    active = True
+                    print("✓ Tarea de materialización a Asset ya en ejecución en cluster de GEE.", flush=True)
+                    break
+        except Exception:
+            pass
+
+        if not active:
+            print(f"Iniciando tarea de exportación de materialización a Asset: {DAILY_ASSET_ID}...", flush=True)
+            export_task = ee.batch.Export.image.toAsset(
+                image=img,
+                description="export_clima_inab_diario",
+                assetId=DAILY_ASSET_ID,
+                region=inab_buffer_geom,
+                scale=250,
+                pyramidingPolicy={
+                    '.default': 'MEAN',
+                    'isoyetas': 'SAMPLE'
+                },
+                maxPixels=1e9
+            )
+            export_task.start()
+            print(f"✓ Tarea de exportación a Asset registrada con éxito (Task ID: {export_task.id}).", flush=True)
+    except Exception as ex:
+        print(f"Aviso en materialización de Asset: {ex}", flush=True)
+
+trigger_asset_materialization(daily_multiband)
+
+# 3. Comprobación de disponibilidad de Asset para entrega estática CDN
+asset_ready = False
+asset_image = None
+try:
+    meta = ee.data.getAsset(DAILY_ASSET_ID)
+    if meta and meta.get('type') == 'IMAGE':
+        asset_image = ee.Image(DAILY_ASSET_ID)
+        asset_ready = True
+        try:
+            ee.data.setAssetAcl(DAILY_ASSET_ID, {'all_users_can_read': True})
+        except Exception:
+            pass
+        print(f"✓ Asset precalculado {DAILY_ASSET_ID} disponible: Generando Map IDs estáticos desde Cloud CDN (Sin Error 429).", flush=True)
+except Exception:
+    pass
+
 urls = {}
 print("Generando URLs de tiles...", flush=True)
-urls['precip'] = get_map_tile_url(recent_chirps, {'min': 0, 'max': 25, 'palette': ['#e0f3f8', '#91bfdb', '#67a9cf', '#2b8cbe', '#045a8d', '#023858']})
-urls['temp'] = get_map_tile_url(recent_temp, {'min': 10, 'max': 36, 'palette': ['#ffffcc', '#ffea46', '#ffaa00', '#ff5500', '#e60000', '#990000']})
-urls['wind'] = get_map_tile_url(recent_wind, {'min': 0, 'max': 35, 'palette': ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#f46d43', '#9e0142']})
-urls['soil'] = get_map_tile_url(recent_soil1, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
-urls['dew'] = get_map_tile_url(recent_dew, {'min': 5, 'max': 25, 'palette': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#1a9850']})
-urls['precipMensual'] = get_map_tile_url(monthly_precip, {'min': 50, 'max': 380, 'palette': ['#e0f3f8', '#74add1', '#4575b4', '#313695', '#045a8d', '#023858']})
-urls['soilRoot'] = get_map_tile_url(recent_soil2, {'min': 0.22, 'max': 0.48, 'palette': ['#8c510a', '#d8b365', '#f6e8c3', '#c7edd5', '#5ab4ac', '#01665e']})
-urls['ndvi'] = get_map_tile_url(recent_ndvi, {'min': 0.15, 'max': 0.85, 'palette': ['#ffffe5', '#f7fcb9', '#d9f0a3', '#addd8e', '#78c679', '#31a354', '#006837']})
-urls['etReal'] = get_map_tile_url(recent_et_real, {'min': 12, 'max': 36, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
-urls['etPot'] = get_map_tile_url(recent_et_pot, {'min': 25, 'max': 95, 'palette': ['#fff7ec', '#fee8c8', '#fdd49e', '#fdbb84', '#fc8d59', '#ef6548', '#d7301f', '#990000']})
-urls['gaussen'] = get_map_tile_url(recent_gaussen, {'min': -40, 'max': 280, 'palette': ['#7f0000', '#d73027', '#f46d43', '#fee08b', '#a7f3d0', '#38bdf8', '#0284c7', '#1e3a8a']})
-urls['estres'] = get_map_tile_url(recent_estres, {'min': 0, 'max': 8, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
-urls['martonne'] = get_map_tile_url(recent_martonne, {'min': 10, 'max': 130, 'palette': ['#d7191c', '#fdae61', '#ffffbf', '#a6d96a', '#38bdf8', '#1d4ed8', '#1e3a8a']})
-urls['suscSequia'] = get_map_tile_url(recent_susc_sequia, {'min': 0.1, 'max': 0.8, 'palette': ['#006837', '#31a354', '#78c679', '#addd8e', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']})
-urls['suscHelada'] = get_map_tile_url(recent_temp_min, {'min': -2, 'max': 18, 'palette': ['#08306b', '#2171b5', '#6baed6', '#bdd7e7', '#fee08b', '#fdae61', '#a0562e']})
-urls['suscDeslizamiento'] = get_map_tile_url(recent_susc_desliz, {'min': 0.1, 'max': 0.85, 'palette': ['#1a9850', '#91cf60', '#d9ef8b', '#fee08b', '#fc8d59', '#d73027', '#7f0000']})
-urls['calidadAire'] = get_map_tile_url(recent_cams_air, {'min': 5.0, 'max': 45.0, 'palette': ['#15803d', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#7f1d1d']})
-urls['isoyetas'] = get_map_tile_url(isoyetas_edges.selfMask(), {'min': 0, 'max': 1, 'palette': ['#e0f2fe', '#0284c7']})
+for key, (dyn_img, vis) in composite_layers.items():
+    if asset_ready and asset_image:
+        try:
+            urls[key] = asset_image.select(key).getMapId(vis)['tile_fetcher'].url_format
+        except Exception:
+            urls[key] = get_map_tile_url(dyn_img, vis)
+    else:
+        urls[key] = get_map_tile_url(dyn_img, vis)
 
 # Malla numérica GEE_RASTER_GRID
 coarse_elev_ref = srtm_30m.subtract(delta_elevation)
@@ -267,11 +339,12 @@ gee_raster_grid_json = json.dumps(grid_obj, separators=(',', ':'))
 
 # ── 3. ACTUALIZACIÓN AUTOMÁTICA DE INDEX.HTML ──
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+script_dir = os.path.dirname(os.path.abspath(__file__))
 index_paths = [
+    os.path.join(script_dir, 'index.html'),
     'index.html',
     os.path.join(repo_root, 'index.html'),
-    os.path.join(os.getcwd(), 'index.html'),
-    # Local brain path removed
+    os.path.join(os.getcwd(), 'index.html')
 ]
 
 target_index = None
