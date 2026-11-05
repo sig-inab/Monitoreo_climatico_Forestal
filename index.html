@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Monitoreo Climático Forestal — INAB</title>
 
-    <!-- Favicon Data URI (Previene error 404 de favicon.ico) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌲</text></svg>">
-
     <!-- Leaflet CSS y JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1048,7 +1045,7 @@
         
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkIncentivos" onchange="toggleInabLayer('incentivos', this.checked)">
-            <span>Incentivos Forestales <small style="color:#94a3b8; font-size:10px;">(Zoom 11+)</small></span>
+            <span>Incentivos Forestales <small style="color:#94a3b8; font-size:10px;">(Zoom 9+)</small></span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkMunicipios" onchange="toggleInabLayer('municipios', this.checked)">
@@ -1060,7 +1057,7 @@
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkRepoblacion" onchange="toggleInabLayer('repoblacion', this.checked)">
-            <span>Obligaciones de Repoblación <small style="color:#94a3b8; font-size:10px;">(Zoom 11+)</small></span>
+            <span>Obligaciones de Repoblación <small style="color:#94a3b8; font-size:10px;">(Zoom 9+)</small></span>
         </label>
         <label class="drawer-checkbox-item">
             <input type="checkbox" id="chkBuffer" checked onchange="toggleInabLayer('buffer', this.checked)">
@@ -1221,25 +1218,25 @@
 
         // 1. DICCIONARIO DE CAPAS GEE (20 URLS OFICIALES INCLUYENDO ISOTERMAS E ISOYETAS)
                                 const GEE_URLS = {
-            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/0af289c98cad47c1ff159ac4d42001b1-3df78bdef06e0cf28c2cbcf16831bd1f/tiles/{z}/{x}/{y}',
-            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d34f4334c8862309758d1d96f53eea49-fb377737bbbe89ed716f70848ccb2aab/tiles/{z}/{x}/{y}',
-            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c26209b2118f8f1462d2ae9256dba560-c0ac9f7127e6931add0cb302f932cb97/tiles/{z}/{x}/{y}',
-            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ff3756491ebf896c2786d97a17925251-363b71c56f59302a0098a6ba06943ca2/tiles/{z}/{x}/{y}',
-            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/22b00b528af77ee02a35ef7d3bcf5eba-83bea3d5662475624095199568df0a20/tiles/{z}/{x}/{y}',
-            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c0920850036a0452aa44656138e7f4ce-ea842eb3453f7bff102ace345d09c7cb/tiles/{z}/{x}/{y}',
-            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/90fbe174c1d50cf5b1433c72436129df-08430f48ec1b4cbb6719148cbc2a0a7b/tiles/{z}/{x}/{y}',
-            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/85f73b7272c683b66bc59863edfe6979-ff9ab70d024df675b36bed48e54336d8/tiles/{z}/{x}/{y}',
-            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c1ef5710feb0e5b9658d5f3e28859ce7-a827bf340d3c1bd8545bec2ec4140a08/tiles/{z}/{x}/{y}',
-            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9ff4bb29691fb2c82ac8f1a8545d4f4c-86a9d3dc84e9ca927c9ac5c6e8d10cbd/tiles/{z}/{x}/{y}',
-            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f31a23fa60eaad0a4cbe47c3707ec05d-89a9fbd163e271e894c7dbd538223749/tiles/{z}/{x}/{y}',
-            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/04a7a80e1f0039ed9715f792bb809649-54107055535157672ea7b53f40bfc254/tiles/{z}/{x}/{y}',
-            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9f70988b3e16cbfea30c00abed48e580-03e0b7197a0aaf885877a614ddbbefda/tiles/{z}/{x}/{y}',
-            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/96ecc0c8bfab8aee89863ec8fa8ad1b8-d501a0cc60e52d74294ac64eaf579baf/tiles/{z}/{x}/{y}',
-            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/62c9d00b7161404d3b54d311ea21a6f3-1135a73670ed05c5fc7a029f5a60aa2c/tiles/{z}/{x}/{y}',
-            suscDeslizamiento: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8f660098a6249d601cc211c6f05d0d6f-2671b3505cb748adae96f58371ee2778/tiles/{z}/{x}/{y}',
-            calidadAire: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6a36f778930185be77e478639dd02ae0-622f07af04906239a90c69566df4bd15/tiles/{z}/{x}/{y}',
+            precip: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/0af289c98cad47c1ff159ac4d42001b1-aaa163d0b635a32ce6a8e9bf209081c0/tiles/{z}/{x}/{y}',
+            temp: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/d34f4334c8862309758d1d96f53eea49-90c85dfabb805819ea6a7bc786e0ce81/tiles/{z}/{x}/{y}',
+            wind: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c26209b2118f8f1462d2ae9256dba560-1383176347ccaa1d6ed37e88e28adf9c/tiles/{z}/{x}/{y}',
+            soil: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/ff3756491ebf896c2786d97a17925251-1213210ee24300000827144923e6d256/tiles/{z}/{x}/{y}',
+            dew: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/22b00b528af77ee02a35ef7d3bcf5eba-5e44a51957d2871628925b73059f803b/tiles/{z}/{x}/{y}',
+            precipMensual: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c0920850036a0452aa44656138e7f4ce-ab254b7413b3733579bb6e71082fd4ac/tiles/{z}/{x}/{y}',
+            soilRoot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/90fbe174c1d50cf5b1433c72436129df-29d7aabb1ac1e8ae210b57085cafcd07/tiles/{z}/{x}/{y}',
+            ndvi: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/85f73b7272c683b66bc59863edfe6979-489330cbc886977841b8d8805a3db62e/tiles/{z}/{x}/{y}',
+            etReal: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/c1ef5710feb0e5b9658d5f3e28859ce7-37a110e218fe997abb9ed6e992773a88/tiles/{z}/{x}/{y}',
+            etPot: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9ff4bb29691fb2c82ac8f1a8545d4f4c-00699d2177b71f9926fe7dd35f57e026/tiles/{z}/{x}/{y}',
+            gaussen: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/f31a23fa60eaad0a4cbe47c3707ec05d-ee647f03f050de49c08b5f98457c49aa/tiles/{z}/{x}/{y}',
+            estres: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/04a7a80e1f0039ed9715f792bb809649-e812146a46ffa6b6433105478fd6b624/tiles/{z}/{x}/{y}',
+            martonne: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/9f70988b3e16cbfea30c00abed48e580-68df35f802490c5a07a977b5f36af322/tiles/{z}/{x}/{y}',
+            suscSequia: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/96ecc0c8bfab8aee89863ec8fa8ad1b8-f1a2c332068e5db07cedb7c0095708b8/tiles/{z}/{x}/{y}',
+            suscHelada: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/62c9d00b7161404d3b54d311ea21a6f3-6b10a74b5e20857bee93c22d3e736ce5/tiles/{z}/{x}/{y}',
+            suscDeslizamiento: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/8f660098a6249d601cc211c6f05d0d6f-44f146556e48376490e7523bb26b383a/tiles/{z}/{x}/{y}',
+            calidadAire: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/6a36f778930185be77e478639dd02ae0-bcd8a22ab2b2e1945793e2ee81634e40/tiles/{z}/{x}/{y}',
             isotermas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/fc17553b878e166e0233a550c5edeb47-a27bb032d70445bf683bafc3c574212b/tiles/{z}/{x}/{y}',
-            isoyetas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/cd0a6a1cd6ee9e89954c4ae3bf4e01c1-d63ba15002af899894c7f0f6909a4de1/tiles/{z}/{x}/{y}'
+            isoyetas: 'https://earthengine.googleapis.com/v1/projects/monitoreoclimaticoforestal/maps/cd0a6a1cd6ee9e89954c4ae3bf4e01c1-4f5f865eb2f08649a1fed97942fe452e/tiles/{z}/{x}/{y}'
         };
 
         // MALLA NUMÉRICA SINCRONIZADA CON LAS CAPAS VISUALES DE GEE
@@ -1331,9 +1328,9 @@
         const popupOptionsRight = { 
             offset: L.point(195, -20),
             className: 'inab-info-popup',
-            autoPan: true,
-            autoPanPaddingTopLeft: L.point(50, 80),
-            autoPanPaddingBottomRight: L.point(180, 160),
+            autoPan: false,
+            autoClose: false,
+            closeOnClick: false,
             closeButton: true
         };
 
@@ -1360,8 +1357,9 @@
                     return {
                         color: '#475569',
                         weight: 1.2,
-                        fillOpacity: 0,
-                        fill: false
+                        fillColor: '#94a3b8',
+                        fillOpacity: 0.05,
+                        fill: true
                     };
                 }
             }).bindPopup(l => {
@@ -1381,7 +1379,7 @@
             }, popupOptionsRight),
             incentivos: L.esri.featureLayer({
                 url: `${BASE_INAB}/Incentivos_Forestales_INAB_Clima_vista/FeatureServer/0`, 
-                minZoom: 11,
+                minZoom: 9,
                 fields: ['objectid', 'programa', 'expediente', 'modalidad', 'tipoproyec', 'estado_proyecto', 'especies_concat'],
                 style: function() {
                     return { 
@@ -1428,7 +1426,7 @@
             }, popupOptionsRight),
             repoblacion: L.esri.featureLayer({
                 url: `${BASE_INAB}/Obligaciones_de_Repoblaci%C3%B3n_Forestal/FeatureServer/1`, 
-                minZoom: 11,
+                minZoom: 9,
                 fields: ['objectid', 'codigo_expediente', 'estado', 'tipo_obligacion', 'area_obligacion'],
                 style: function() {
                     return { 
@@ -1807,8 +1805,8 @@
         function toggleInabLayer(layerKey, isChecked) {
             if (isChecked) {
                 map.addLayer(inabLayers[layerKey]);
-                if ((layerKey === 'incentivos' || layerKey === 'repoblacion') && map.getZoom() < 11) {
-                    showZoomHint('Capa activada. Acércate en el mapa (Zoom 11+) para visualizar los predios individuales.');
+                if ((layerKey === 'incentivos' || layerKey === 'repoblacion') && map.getZoom() < 9) {
+                    showZoomHint('Capa activada. Acércate en el mapa (Zoom 9+) para visualizar los predios individuales.');
                 }
             } else {
                 map.removeLayer(inabLayers[layerKey]);
@@ -2119,9 +2117,12 @@
             handlePointSelection(e.latlng.lat, e.latlng.lng);
         });
 
-        // Permitir clic sobre polígonos vectoriales INAB sin duplicar la petición a Open-Meteo
+        // Permitir clic sobre polígonos vectoriales INAB garantizando que se abra la caja de información y la banderita
         Object.values(inabLayers).forEach(layer => {
             layer.on('click', function(e) {
+                if (e.originalEvent) {
+                    L.DomEvent.stopPropagation(e.originalEvent);
+                }
                 if (e.latlng) {
                     handlePointSelection(e.latlng.lat, e.latlng.lng);
                 }
