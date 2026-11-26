@@ -1,7 +1,5 @@
 <p align="center">
-  <a href="https://sig.inab.gob.gt/" target="_blank">
-    <img src="./assets/logos/inab.png" alt="Instituto Nacional de Bosques - INAB" height="85">
-  </a>
+  <img src="./assets/banner.jpg" alt="Monitoreo Climático Forestal - INAB" width="100%">
 </p>
 
 <h1 align="center">Sistema de Monitoreo Climático Forestal</h1>
@@ -12,14 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://sig-inab.github.io/Monitoreo_climatico_Forestal/" target="_blank">
-    <img src="https://img.shields.io/badge/Plataforma%20en%20Vivo-sig--inab.github.io-22c55e?style=for-the-badge&logo=githubpages&logoColor=white" alt="Plataforma en Vivo">
+  <a href="https://inab.gob.gt/" target="_blank">
+    <img src="https://img.shields.io/badge/Portal_Oficial-INAB_Guatemala-15803d?style=for-the-badge&logo=tree&logoColor=white" alt="Portal Oficial INAB">
   </a>
   <a href="https://sig.inab.gob.gt/" target="_blank">
-    <img src="https://img.shields.io/badge/Geoportal%20INAB-sig.inab.gob.gt-15803d?style=for-the-badge&logo=esri&logoColor=white" alt="Geoportal INAB">
-  </a>
-  <a href="https://github.com/sig-inab/Monitoreo_climatico_Forestal/actions/workflows/daily_update.yml">
-    <img src="https://img.shields.io/badge/GitHub_Actions-Actualización_Bidiaria-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions">
+    <img src="https://img.shields.io/badge/Geoportal_SIG-sig.inab.gob.gt-059669?style=for-the-badge&logo=esri&logoColor=white" alt="Geoportal SIG INAB">
   </a>
   <a href="./LICENSE">
     <img src="https://img.shields.io/badge/Licencia-MIT-f59e0b?style=for-the-badge" alt="Licencia">
@@ -40,30 +35,30 @@
 
 ## Red de Cooperación y Proveedores de Datos
 
-El Sistema de Monitoreo Climático Forestal consolida observaciones meteorológicas de superficie en tiempo real, modelos climáticos globales y sensores remotos orbitales, integrando las siguientes instituciones colaboradoras:
+El sistema consolida observaciones meteorológicas terrestres en tiempo real, modelos climáticos globales y sensores remotos orbitales, integrando las siguientes instituciones y fuentes:
 
 ### 🇬🇹 Instituciones Estatales y Redes Nacionales
 <table align="center" width="100%">
   <tr>
     <td align="center" width="33%" valign="top">
-      <a href="https://sig.inab.gob.gt/" target="_blank">
+      <a href="https://inab.gob.gt/" target="_blank">
         <img src="./assets/logos/inab.png" height="65" alt="Instituto Nacional de Bosques (INAB)"><br><br>
         <strong>Instituto Nacional de Bosques (INAB)</strong><br>
-        <sub>Coordinación SIG · Geoportal Oficial</sub>
+        <sub>Portal Institucional Oficial</sub>
       </a>
     </td>
     <td align="center" width="33%" valign="top">
       <a href="https://insivumeh.gob.gt/" target="_blank">
         <img src="./assets/logos/insivumeh.png" height="65" alt="INSIVUMEH"><br><br>
         <strong>INSIVUMEH</strong><br>
-        <sub>Red Meteorológica, Mareas y Alertas Oficiales</sub>
+        <sub>Red Meteorológica, Mareas y Pronósticos Oficiales</sub>
       </a>
     </td>
     <td align="center" width="33%" valign="top">
       <a href="https://meteorologia.anacafe.org/" target="_blank">
         <img src="./assets/logos/anacafe.svg" height="65" alt="ANACAFE"><br><br>
         <strong>ANACAFE</strong><br>
-        <sub>Red Meteorológica de Alta Densidad Agrícola</sub>
+        <sub>Red Meteorológica de Alta Densidad Agroclimática</sub>
       </a>
     </td>
   </tr>
@@ -74,35 +69,35 @@ El Sistema de Monitoreo Climático Forestal consolida observaciones meteorológi
   <tr>
     <td align="center" width="20%" valign="top">
       <a href="https://www.ecmwf.int/" target="_blank">
-        <img src="./assets/logos/ecmwf.svg" height="46" alt="ECMWF"><br><br>
+        <img src="./assets/logos/ecmwf.svg" height="42" alt="ECMWF"><br><br>
         <strong>ECMWF</strong><br>
-        <sub>Reanálisis ERA5 y Pronóstico Atmosférico IFS</sub>
+        <sub>Reanálisis ERA5 y Modelo Global IFS</sub>
       </a>
     </td>
     <td align="center" width="20%" valign="top">
       <a href="https://www.noaa.gov/" target="_blank">
-        <img src="./assets/logos/noaa.png" height="50" alt="NOAA"><br><br>
+        <img src="./assets/logos/noaa.png" height="48" alt="NOAA"><br><br>
         <strong>NOAA</strong><br>
         <sub>Satélites GOES & nowCOAST Radar/Nube</sub>
       </a>
     </td>
     <td align="center" width="20%" valign="top">
       <a href="https://www.chc.ucsb.edu/data/chirps" target="_blank">
-        <img src="./assets/logos/chirps.png" height="46" alt="CHIRPS UCSB"><br><br>
+        <img src="./assets/logos/chirps.png" height="42" alt="CHIRPS UCSB"><br><br>
         <strong>CHIRPS / UCSB</strong><br>
-        <sub>Precipitación Diaria y Anomalías Históricas</sub>
+        <sub>Precipitación Diaria y Anomalías Pluviométricas</sub>
       </a>
     </td>
     <td align="center" width="20%" valign="top">
       <a href="https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-5p" target="_blank">
-        <img src="./assets/logos/copernicus.svg" height="46" alt="Copernicus Sentinel-5P"><br><br>
+        <img src="./assets/logos/copernicus.svg" height="42" alt="Copernicus Sentinel-5P"><br><br>
         <strong>Copernicus S-5P</strong><br>
-        <sub>Química Atmosférica, Monóxido y Aerosoles</sub>
+        <sub>Química Atmosférica, Monóxido y Aerosoles ESA</sub>
       </a>
     </td>
     <td align="center" width="20%" valign="top">
       <a href="https://earthengine.google.com/" target="_blank">
-        <img src="./assets/logos/google-earth-engine.png" height="46" alt="Google Earth Engine"><br><br>
+        <img src="./assets/logos/google-earth-engine.png" height="42" alt="Google Earth Engine"><br><br>
         <strong>Earth Engine</strong><br>
         <sub>Cómputo en la Nube y Generación de Teselas</sub>
       </a>
@@ -114,11 +109,11 @@ El Sistema de Monitoreo Climático Forestal consolida observaciones meteorológi
 
 ## Acerca del Sistema
 
-El **Sistema de Monitoreo Climático Forestal** ha sido concebido y desarrollado por la **Coordinación de Sistemas de Información Geográfica del INAB** con el propósito de proveer una plataforma científica, abierta y en tiempo real para el seguimiento de variables meteorológicas críticas sobre los ecosistemas forestales de Guatemala.
+El **Sistema de Monitoreo Climático Forestal** ha sido desarrollado por la **Coordinación de Sistemas de Información Geográfica del INAB** con el propósito de proveer una infraestructura científica y abierta para el seguimiento continuo de variables meteorológicas críticas sobre la cobertura forestal de Guatemala.
 
-Inspirado en los estándares internacionales de plataformas climáticas (como el [C3S Atlas de Copernicus/ECMWF](https://atlas.climate.copernicus.eu)), el sistema implementa principios de **transparencia, reproducibilidad y principios FAIR** (*Findability, Accessibility, Interoperability, and Reusability*). Su objetivo central es suministrar información espacial de alta resolución a técnicos de campo, investigadores, directores regionales y tomadores de decisiones para:
+Inspirado en los estándares internacionales de plataformas climáticas (como el [C3S Atlas de Copernicus/ECMWF](https://atlas.climate.copernicus.eu)), el sistema implementa principios de **transparencia, reproducibilidad y principios FAIR** (*Findability, Accessibility, Interoperability, and Reusability*). La información espacial alimenta directamente los tableros analíticos y dashboards de **ArcGIS** del INAB para:
 
-* **Gestión del Riesgo y Prevención de Incendios Forestales**: Monitoreo de anomalías de temperatura, índices de sequía y vientos.
+* **Gestión del Riesgo y Prevención de Incendios Forestales**: Monitoreo de anomalías térmicas, índices de sequía y vectores de viento.
 * **Seguimiento de Incentivos Forestales (PINPEP / PROBOSQUE)**: Evaluación del impacto de episodios meteorológicos extremos sobre proyectos forestales adjudicados.
 * **Alertas Tempranas y Salud del Ecosistema**: Análisis de estrés hídrico mediante series de precipitación (CHIRPS) y calidad del aire / dispersión de humo (Copernicus Sentinel-5P).
 
@@ -130,11 +125,12 @@ La arquitectura del repositorio está organizada de forma modular para garantiza
 
 | Directorio / Archivo | Descripción |
 | :------------------- | :---------- |
-| [`.github/workflows/`](./.github/workflows) | Workflows de GitHub Actions para ejecución automática bidiaria (`daily_update.yml`). |
+| [`.github/workflows/`](./.github/workflows) | Flujos de GitHub Actions para ejecución automática bidiaria (`daily_update.yml`). |
 | [`scripts/`](./scripts) | Scripts automatizados en Python para ingesta satelital en GEE y recolección concurrente de estaciones terrestres (`update_daily_gee.py`, `harvest_anacafe_daily.py`). |
 | [`skills/`](./skills) | Habilidades y playbooks técnicos de IA integrados para teledetección, rendimiento de código, CI/CD y diseño cartográfico. |
-| [`assets/logos/`](./assets/logos) | Identidad visual oficial de instituciones nacionales e internacionales proveedoras de datos. |
-| [`index.html`](./index.html) | Aplicación principal Web GIS en producción servida a través de GitHub Pages. |
+| [`assets/logos/`](./assets/logos) | Identidad visual de instituciones nacionales e internacionales optimizadas con alto contraste para modo oscuro. |
+| [`assets/banner.jpg`](./assets/banner.jpg) | Imagen de cabecera que representa la cobertura climática satelital y dinámica atmosférica de la región. |
+| [`index.html`](./index.html) | Módulo Web GIS interactivo de visualización geoespacial. |
 | [`inab-interactivo-tierra.html`](./inab-interactivo-tierra.html) | Módulo dinámico interactivo con simulación de partículas de la Tierra y constelaciones de monitoreo orbital. |
 
 ---
@@ -155,26 +151,27 @@ flowchart LR
         PyHarvest["harvest_anacafe_daily.py"]
     end
 
-    subgraph Salida["🗺️ Capas & Despliegue"]
+    subgraph Salida["🗺️ Capas & Integración"]
         Tiles["Teselas XYZ Climáticas<br/>Recorte Buffer 1 km"]
         Vect["GeoJSON & GeoPackage (.gpkg)<br/>Respaldo ownCloud"]
-        Pages["GitHub Pages<br/>(Visor Web GIS en Vivo)"]
+        ArcGIS["Dashboard ArcGIS & Geoportal<br/>(Visualización Operativa)"]
     end
 
     Cron --> PyGEE
     Cron --> PyHarvest
     GEE --> PyGEE
     ANA --> PyHarvest
-    ARC --> Pages
+    ARC --> ArcGIS
     PyGEE --> Tiles
     PyHarvest --> Vect
-    Tiles --> Pages
+    Tiles --> ArcGIS
+    Vect --> ArcGIS
 ```
 
-1. **Planificación Automatizada**: GitHub Actions activa dos veces al día (`0 9,21 * * *`) el pipeline de actualización sin intervención humana.
+1. **Planificación Automatizada**: GitHub Actions activa dos veces al día (`0 9,21 * * *`) el pipeline de actualización sin intervención manual.
 2. **Procesamiento Orbital**: `update_daily_gee.py` se autentica con Google Earth Engine, filtra las imágenes más recientes de precipitación, temperatura y viento, genera las URL de teselas raster y las recorta al buffer oficial de 1 km de la República de Guatemala.
 3. **Cosecha de Estaciones Terrestres**: `harvest_anacafe_daily.py` extrae en paralelo las lecturas de estaciones activas, calcula anomalías térmicas y acumulación pluviométrica, generando capas vectoriales estándar GeoJSON y GeoPackage (`.gpkg`).
-4. **Despliegue Continuo**: Las nuevas capas y parámetros se sincronizan automáticamente con `index.html` y se publican al instante en [GitHub Pages](https://sig-inab.github.io/Monitoreo_climatico_Forestal/).
+4. **Alimentación al Dashboard ArcGIS**: Las nuevas capas, métricas y teselas se sincronizan para nutrir el tablero de control principal en ArcGIS y el geoportal institucional.
 
 ---
 
@@ -185,7 +182,7 @@ Siguiendo el esquema técnico de reproductibilidad científica, a continuación 
 | Librería / Componente | Descripción |
 | :-------------------- | :---------- |
 | [**earthengine-api**](https://developers.google.com/earth-engine) | API cliente oficial de Google Earth Engine en Python para consulta, procesamiento distribuido y exportación de teselas climáticas. |
-| [**Leaflet**](https://leafletjs.com/) | Biblioteca JavaScript líder de código abierto para mapas interactivos ligeros y adaptables a dispositivos móviles. |
+| [**Leaflet**](https://leafletjs.com/) | Biblioteca JavaScript de código abierto para mapas interactivos ligeros y adaptables a dispositivos móviles. |
 | [**Esri Leaflet**](https://esri.github.io/esri-leaflet/) | Complemento para Leaflet que permite consumir directamente servicios REST de ArcGIS (FeatureLayers, MapServers y renderizadores oficiales). |
 | [**Leaflet Velocity**](https://github.com/onursimsek/leaflet-velocity) | Motor de renderizado en Canvas para visualización fluida y animada de campos vectoriales de dirección y velocidad de viento. |
 | [**Requests**](https://requests.readthedocs.io/) | Cliente HTTP para Python utilizado en la ingesta concurrente de APIs meteorológicas mediante `concurrent.futures`. |
